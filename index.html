@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#09090B" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="FJC Licences" />
+  <meta name="description" content="Licences FFF du Football Jeunesse Champhol — recherche terrain le jour de match." />
+  <title>FJ Champhol — Licences</title>
+  <link rel="icon" href="logo fjchamphol.jpg" />
+  <link rel="apple-touch-icon" href="logo fjchamphol.jpg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    html { color-scheme: dark; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { scrollbar-width: none; }
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration { display: none; }
+    #list { min-width: 0; }
+    .licence-card { container-type: inline-size; }
+    .licence-actions { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+    .licence-actions a { max-width: 100%; }
+    @container (max-width: 18rem) {
+      .licence-actions { display: grid; grid-template-columns: 1fr 1fr; }
+      .licence-actions a { width: 100%; justify-content: center; }
+    }
+    @container (max-width: 16rem) {
+      .licence-kicker { display: none; }
+      .licence-num { font-size: 0.875rem; letter-spacing: 0.02em; }
+    }
+    @media (min-width: 1280px) {
+      #list { grid-template-columns: repeat(5, minmax(0, 24rem)); justify-content: center; }
+    }
+    html.unlocked #lockscreen { display: none; }
+    @media (prefers-reduced-motion: reduce) {
+      * { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+  <script>
+    try {
+      var authKey = "fjc-champhol-unlocked";
+      var loginKey = "fjc_login_timestamp";
+      var sessionMs = 12 * 60 * 60 * 1000;
+      var signedIn = localStorage.getItem(authKey) === "1";
+      var loginAt = Number(localStorage.getItem(loginKey));
+      var sessionFresh = Number.isFinite(loginAt) && Date.now() - loginAt <= sessionMs;
+      if (signedIn && sessionFresh) {
+        document.documentElement.classList.add("unlocked");
+      } else if (signedIn && Number.isFinite(loginAt)) {
+        localStorage.removeItem(authKey);
+        localStorage.removeItem(loginKey);
+        document.documentElement.setAttribute("data-session-expired", "1");
+      }
+    } catch (error) {
+      /* navigation privée : le verrouillage reste actif */
+    }
+  </script>
+</head>
+<body class="min-h-screen bg-[#09090B] text-white antialiased">
+  <div id="app">
+  <div class="h-1 bg-[#DC2626]"></div>
+
+  <header class="sticky top-0 z-40 border-b border-white/10 bg-[#09090B]/95 backdrop-blur-md">
+    <div class="mx-auto flex w-full flex-col gap-2 px-2.5 pb-2 pt-[max(0.6rem,env(safe-area-inset-top))]">
+      <div class="flex items-center gap-3">
+        <img
+          src="logo fjchamphol.jpg"
+          alt="Logo Foyer des Jeunes de Champhol"
+          class="h-11 w-11 shrink-0 rounded-xl bg-white object-contain p-0.5 ring-2 ring-white/15 sm:h-12 sm:w-12"
+        />
+        <div class="min-w-0 flex-1">
+          <h1 class="truncate text-xl font-black leading-none">FJ CHAMPHOL</h1>
+          <p class="mt-0.5 text-[10px] font-semibold leading-tight tracking-[0.08em] text-[#DC2626] sm:text-[11px]">FOYER DES JEUNES DE CHAMPHOL</p>
+        </div>
+        <div class="flex shrink-0 items-center gap-1.5">
+          <button
+            id="lockBtn"
+            type="button"
+            class="grid h-10 w-10 place-items-center rounded-xl text-zinc-300 ring-1 ring-white/15 hover:bg-white/10 hover:text-white"
+            aria-label="Verrouiller"
+            title="Verrouiller"
+          >
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="5" y="11" width="14" height="10" rx="2"></rect>
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" stroke-linecap="round"></path>
+            </svg>
+          </button>
+          <button
+            id="updateBtn"
+            type="button"
+            class="max-w-[9.5rem] shrink-0 rounded-2xl bg-[#DC2626] px-3 py-2 text-center text-xs font-bold leading-tight text-white shadow-lg shadow-red-900/30 active:scale-[0.98]"
+          >
+            Mettre à jour<br />la base Excel
+          </button>
+        </div>
+      </div>
+
+      <div class="relative">
+        <svg class="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="M20 20l-3.5-3.5" stroke-linecap="round"></path>
+        </svg>
+        <input
+          id="search"
+          type="search"
+          enterkeyhint="search"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="Nom, prénom ou n° de licence"
+          class="h-11 w-full rounded-xl border border-white/10 bg-zinc-900 pl-11 pr-12 text-base text-white outline-none placeholder:text-zinc-500 focus:border-[#DC2626] focus:ring-2 focus:ring-[#DC2626]"
+        />
+        <button
+          id="clearSearch"
+          type="button"
+          class="absolute right-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-xl text-zinc-400 hover:bg-white/10 hover:text-white"
+          aria-label="Effacer la recherche"
+        >
+          <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div id="chips" class="no-scrollbar -mx-2.5 flex gap-1.5 overflow-x-auto px-2.5" role="tablist" aria-label="Catégories"></div>
+    </div>
+  </header>
+
+  <p id="status" class="mx-auto w-full px-2.5 pt-1.5 text-xs text-zinc-400" aria-live="polite">Chargement des licences…</p>
+  <main id="list" class="mx-auto grid w-full grid-cols-1 gap-1.5 px-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-1.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"></main>
+
+  <div id="modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button type="button" class="absolute inset-0 bg-black/70" data-close aria-label="Fermer"></button>
+    <div class="absolute inset-x-0 bottom-0 mx-auto w-full max-w-md rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-zinc-950 shadow-2xl sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:rounded-3xl">
+      <div class="mx-auto mb-4 h-1.5 w-12 rounded-full bg-zinc-200 sm:hidden"></div>
+      <h2 id="modalTitle" class="text-lg font-black">Mettre à jour la base Excel</h2>
+      <p class="mt-1 text-sm leading-relaxed text-zinc-600">
+        Chargez le nouvel export FFF (.xlsx). La liste est enregistrée dans ce navigateur et reste disponible hors ligne.
+      </p>
+      <label
+        id="dropZone"
+        class="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center transition hover:border-[#DC2626] hover:bg-red-50"
+      >
+        <span class="grid h-12 w-12 place-items-center rounded-full bg-[#DC2626] text-white">
+          <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 16V4M7 9l5-5 5 5" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M4 20h16" stroke-linecap="round"></path>
+          </svg>
+        </span>
+        <span class="mt-3 text-sm font-bold">Glisser le fichier .xlsx ici</span>
+        <span class="mt-1 text-sm text-zinc-500">ou choisir un fichier</span>
+        <input id="fileInput" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="sr-only" />
+      </label>
+      <p id="modalMeta" class="mt-4 text-xs leading-relaxed text-zinc-500"></p>
+      <div class="mt-4 flex gap-2">
+        <button id="forgetBtn" type="button" class="hidden h-11 flex-1 rounded-2xl border border-zinc-300 text-sm font-semibold text-zinc-800">
+          Relire le fichier du dossier
+        </button>
+        <button type="button" data-close class="h-11 flex-1 rounded-2xl bg-zinc-950 text-sm font-semibold text-white">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="dropOverlay" class="pointer-events-none fixed inset-0 z-[60] hidden items-center justify-center bg-black/80 p-6">
+    <div class="w-full max-w-sm rounded-3xl border-2 border-dashed border-[#DC2626] bg-zinc-950 px-6 py-10 text-center">
+      <p class="text-lg font-black">Déposez le fichier Excel</p>
+      <p class="mt-1 text-sm text-zinc-400">La base sera enregistrée dans ce navigateur</p>
+    </div>
+  </div>
+
+  <div id="toast" class="pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-[70] hidden -translate-x-1/2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-950 shadow-xl" role="status"></div>
+  </div>
+
+  <div id="lockscreen" class="fixed inset-0 z-[80] flex items-center justify-center bg-[#09090B] px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
+    <div class="w-full max-w-sm overflow-hidden rounded-3xl border-t-4 border-[#DC2626] bg-white text-zinc-950 shadow-2xl">
+      <div class="px-6 pb-6 pt-7 text-center">
+        <img src="logo fjchamphol.jpg" alt="Logo Foyer des Jeunes de Champhol" class="mx-auto h-16 w-16 rounded-2xl bg-white object-contain p-1 ring-1 ring-zinc-200" />
+        <p class="mt-3 text-xs font-black tracking-[0.16em]">FJ CHAMPHOL</p>
+        <h2 id="lockTitle" class="mt-1 text-lg font-black leading-tight">Espace Dirigeants &amp; Éducateurs</h2>
+        <form id="lockForm" class="mt-5 text-left" novalidate>
+          <label for="password" class="text-sm font-semibold">Mot de passe</label>
+          <div class="relative mt-1.5">
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              autocapitalize="off"
+              autocorrect="off"
+              spellcheck="false"
+              class="h-12 w-full rounded-xl border border-zinc-300 bg-white px-3 pr-12 text-base text-zinc-950 outline-none focus:border-[#DC2626] focus:ring-2 focus:ring-[#DC2626]"
+            />
+            <button id="togglePassword" type="button" class="absolute right-1.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950" aria-label="Afficher le mot de passe">
+              <svg id="eyeIcon" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+          <p id="sessionNotice" class="mt-2 hidden text-xs font-semibold text-[#DC2626]" role="status">Session expirée après 12h</p>
+          <p id="lockError" class="mt-2 hidden text-sm font-semibold text-[#DC2626]" role="alert">Mot de passe incorrect</p>
+          <button type="submit" class="mt-4 h-12 w-full rounded-xl bg-[#DC2626] text-sm font-bold text-white active:scale-[0.99]">Se connecter</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "fjc-champhol-licences-v1";
+    const AUTH_KEY = "fjc-champhol-unlocked";
+    const LOGIN_KEY = "fjc_login_timestamp";
+    const SESSION_MS = 12 * 60 * 60 * 1000;
+    const ACCESS_PASSWORD = "fjc1965";
+    const FILE_CANDIDATES = ["44485107d.xlsx", "44201613d.xlsx"];
+    const EMBEDDED_PLAYERS = [{"nom":"ARRONDEAU Mathieu","categorie":"Dirigeant","naissance":"12/04/1992","mobile":"0762775117","parent":"","email":"juliearrondeau@hotmail.fr","emailParent":"","licence":"90322326","personne":"9605126154"},{"nom":"BENIS Kevin","categorie":"Dirigeant","naissance":"22/03/1988","mobile":"0614254642","parent":"","email":"kevx2002@hotmail.com","emailParent":"","licence":"89309098","personne":"1052123165"},{"nom":"COINCE Christopher","categorie":"Dirigeant","naissance":"09/04/1979","mobile":"0771261016","parent":"","email":"christopher.coince@sfr.fr","emailParent":"","licence":"88961824","personne":"9604981065"},{"nom":"DUCASTELLE Thomas","categorie":"Dirigeant","naissance":"16/02/1988","mobile":"0771160288","parent":"","email":"thomas.ducastelle@hotmail.fr","emailParent":"","licence":"90322330","personne":"1072121679"},{"nom":"GEHAN Olivier","categorie":"Dirigeant","naissance":"17/11/1966","mobile":"0637182093","parent":"","email":"520961@lcfoot.fr","emailParent":"","licence":"88807622","personne":"1020115557"},{"nom":"GODEREAUX Alain","categorie":"Dirigeant","naissance":"25/11/1981","mobile":"0628826139","parent":"","email":"aglover687@gmail.com","emailParent":"","licence":"89130562","personne":"1072117817"},{"nom":"HEITOR Rafael","categorie":"Dirigeant","naissance":"18/06/2005","mobile":"0684667986","parent":"","email":"stephanie.heitor.foot@gmail.com","emailParent":"","licence":"90369109","personne":"2546106150"},{"nom":"HEITOR Stephanie","categorie":"Dirigeante","naissance":"29/10/1977","mobile":"0684667986","parent":"","email":"stephanie.heitor.foot@gmail.com","emailParent":"","licence":"88560327","personne":"2546798438"},{"nom":"HERCHE Didier","categorie":"Dirigeant","naissance":"11/08/1956","mobile":"0685278386","parent":"","email":"didier.herche@orange.fr","emailParent":"","licence":"88560334","personne":"1010173309"},{"nom":"HUSSON Stephane","categorie":"Dirigeant","naissance":"03/07/1966","mobile":"0658429330","parent":"","email":"s28.husson@hotmail.com","emailParent":"","licence":"90046932","personne":"1052114375"},{"nom":"LABAT Sandrine","categorie":"Dirigeante","naissance":"31/08/1973","mobile":"0662520363","parent":"","email":"sandrinelabat3108@gmail.com","emailParent":"","licence":"88875347","personne":"9605506123"},{"nom":"MAKNATT Yousef","categorie":"Dirigeant","naissance":"17/02/1982","mobile":"0781931841","parent":"","email":"maknatt@gmail.com","emailParent":"","licence":"90046907","personne":"820578091"},{"nom":"MISCHLER Noel","categorie":"Dirigeant","naissance":"16/12/1961","mobile":"0669498589","parent":"","email":"mischlernoel28630@gmail.com","emailParent":"","licence":"89068509","personne":"1052113767"},{"nom":"NEAU Fabrice","categorie":"Dirigeant","naissance":"13/04/1977","mobile":"0613159397","parent":"","email":"fabrice.neau28@orange.fr","emailParent":"","licence":"88572644","personne":"1082114837"},{"nom":"VAYER Dorothee","categorie":"Dirigeante","naissance":"28/01/1986","mobile":"0650425578","parent":"","email":"lassagnedorothee@gmail.com","emailParent":"","licence":"90561831","personne":"2543589033"},{"nom":"JAOUEN Stephane","categorie":"Educateur Fédéral","naissance":"24/09/1979","mobile":"0614392636","parent":"","email":"stefj28110@gmail.com","emailParent":"","licence":"89355789","personne":"1025049947"},{"nom":"ADNET BODOVILLE Leo","categorie":"U12 (- 12 ans)","naissance":"08/07/2015","mobile":"0630604371","parent":"0630604371","email":"l.bodoville@wanadoo.fr","emailParent":"l.bodoville@wanadoo.fr","licence":"88932226","personne":"9603702548"},{"nom":"AGUILLE Arthur","categorie":"U10 (- 10 ans)","naissance":"20/10/2017","mobile":"0604026776","parent":"0604026776","email":"delphine_paulmier@hotmail.fr","emailParent":"delphine_paulmier@hotmail.fr","licence":"90362470","personne":"9604202305"},{"nom":"AGUILLE Theo","categorie":"U19 (- 19 ans)","naissance":"15/10/2008","mobile":"0604026776","parent":"","email":"delphine_paulmier@hotmail.fr","emailParent":"","licence":"90362465","personne":"2548057305"},{"nom":"ALILAT Axel","categorie":"U8 (- 8 ans)","naissance":"17/04/2019","mobile":"0603784336","parent":"0603784336","email":"salahalilat93@gmail.com","emailParent":"salahalilat93@gmail.com","licence":"88961746","personne":"9604967898"},{"nom":"ALILAT Aylane","categorie":"U10 (- 10 ans)","naissance":"09/10/2017","mobile":"0603784336","parent":"0603784336","email":"salahalilat93@gmail.com","emailParent":"salahalilat93@gmail.com","licence":"88961740","personne":"9604425112"},{"nom":"ALILAT Mohand Salah","categorie":"Vétéran","naissance":"02/02/1986","mobile":"0603784336","parent":"","email":"salahalilat93@gmail.com","emailParent":"","licence":"88933093","personne":"9604260008"},{"nom":"ARRONDEAU Enzo","categorie":"U6 (- 6 ans)","naissance":"15/08/2021","mobile":"0619048722","parent":"0619048722","email":"juliearrondeau@hotmail.fr","emailParent":"juliearrondeau@hotmail.fr","licence":"90288812","personne":"9605785850"},{"nom":"ARRONDEAU Evan","categorie":"U9 (- 9 ans)","naissance":"27/05/2018","mobile":"0619048722","parent":"0619048722","email":"juliearrondeau@hotmail.fr","emailParent":"juliearrondeau@hotmail.fr","licence":"90316616","personne":"9605036751"},{"nom":"AUBERT Fabien","categorie":"Vétéran","naissance":"28/03/1975","mobile":"0687359517","parent":"","email":"FABIENAUBERT@ORANGE.FR","emailParent":"","licence":"88994504","personne":"1010636119"},{"nom":"BAMBIER Maxime","categorie":"Vétéran","naissance":"26/03/1982","mobile":"0673840042","parent":"","email":"bambier.maxime@gmail.com","emailParent":"","licence":"90065870","personne":"1020582608"},{"nom":"BARALE Tiago","categorie":"U10 (- 10 ans)","naissance":"06/02/2017","mobile":"0615848030","parent":"0615848030","email":"anjiz@hotmail.fr","emailParent":"anjiz@hotmail.fr","licence":"89731772","personne":"9605649349"},{"nom":"BARBOSA GROSNOM Leny","categorie":"U12 (- 12 ans)","naissance":"21/02/2015","mobile":"0611170514","parent":"0611170514","email":"egrosnom@gmail.com","emailParent":"egrosnom@gmail.com","licence":"90292258","personne":"9604650173"},{"nom":"BARON Natthan","categorie":"Senior","naissance":"14/09/2003","mobile":"0760223528","parent":"","email":"natthanbaron2@gmail.com","emailParent":"","licence":"89198077","personne":"2546024172"},{"nom":"BAUMSTUMMLER Gregory","categorie":"Senior","naissance":"02/06/1998","mobile":"0677342455","parent":"","email":"greg28310@gmail.com","emailParent":"","licence":"89198071","personne":"9602716400"},{"nom":"BELOT Joshua","categorie":"U11 (- 11 ans)","naissance":"26/03/2016","mobile":"0621591370","parent":"0621591370","email":"marina.belot.28@gmail.com","emailParent":"marina.belot.28@gmail.com","licence":"90223545","personne":"9603607823"},{"nom":"BELOT Tyler","categorie":"U8 (- 8 ans)","naissance":"27/11/2019","mobile":"0621591370","parent":"0621591370","email":"marina.belot.28@gmail.com","emailParent":"marina.belot.28@gmail.com","licence":"90170060","personne":"9605433326"},{"nom":"BEQUARD Leo","categorie":"U9 (- 9 ans)","naissance":"08/10/2018","mobile":"0688875270","parent":"0688875270","email":"julie.bequard28@gmail.com","emailParent":"julie.bequard28@gmail.com","licence":"90664557","personne":"9605405765"},{"nom":"BERNARD Jerome","categorie":"Vétéran","naissance":"02/08/1984","mobile":"0613170367","parent":"","email":"bernardjerome.bj@gmail.com","emailParent":"","licence":"90452602","personne":"2348062036"},{"nom":"BESSIERES Tom","categorie":"Senior","naissance":"10/12/2006","mobile":"0620891551","parent":"","email":"tombessieres@icloud.com","emailParent":"","licence":"89123639","personne":"2546715374"},{"nom":"BIKMOUKHAMETOV Sasha","categorie":"U9 (- 9 ans)","naissance":"10/05/2018","mobile":"0659408042","parent":"0659408042","email":"b.edouard28000@hotmail.fr","emailParent":"b.edouard28000@hotmail.fr","licence":"90504844","personne":"9605655060"},{"nom":"BIZEUL Denis","categorie":"Vétéran","naissance":"14/10/1963","mobile":"0777766408","parent":"","email":"denis.bizeul09@gmail.com","emailParent":"","licence":"90461641","personne":"1020114651"},{"nom":"BORDE Johann","categorie":"U16 (- 16 ans)","naissance":"19/01/2011","mobile":"0782999550","parent":"0632841237","email":"bordejohann19@gmail.com","emailParent":"charlotte.buisson@hotmail.fr","licence":"90637499","personne":"2548012982"},{"nom":"BRACQUART Jules","categorie":"U16 (- 16 ans)","naissance":"14/01/2011","mobile":"0632783957","parent":"0632783957","email":"anny.coince28@orange.fr","emailParent":"anny.coince28@orange.fr","licence":"89122473","personne":"2548010240"},{"nom":"BRACQUART Malo","categorie":"U10 (- 10 ans)","naissance":"14/02/2017","mobile":"0632783957","parent":"0632783957","email":"anny.coince28@orange.fr","emailParent":"anny.coince28@orange.fr","licence":"89122460","personne":"9604511615"},{"nom":"BREANT Sylvain","categorie":"Vétéran","naissance":"14/04/1978","mobile":"0777370024","parent":"","email":"sylvain.breant76@gmail.com","emailParent":"","licence":"89711810","personne":"2127407493"},{"nom":"BRETON Hugo","categorie":"U15 (- 15 ans)","naissance":"21/03/2012","mobile":"0658737142","parent":"0658737142","email":"rachel.gasse@gmail.com","emailParent":"rachel.gasse@gmail.com","licence":"89123420","personne":"9602340577"},{"nom":"BRETON Paul","categorie":"U12 (- 12 ans)","naissance":"26/10/2015","mobile":"0658737142","parent":"0658737142","email":"rachel.gasse@gmail.com","emailParent":"fbreton28@gmail.com","licence":"89123412","personne":"9603307242"},{"nom":"BRIAUX Camille","categorie":"Vétéran","naissance":"27/05/1989","mobile":"0629551676","parent":"","email":"camboss2705@gmail.com","emailParent":"","licence":"90551888","personne":"1082125292"},{"nom":"BULAT Azad","categorie":"U7 (- 7 ans)","naissance":"06/05/2020","mobile":"0681165706","parent":"0681165706","email":"sevogulo2512@gmail.com","emailParent":"sevogulo2512@gmail.com","licence":"90638364","personne":"9605874360"},{"nom":"CARPENTIER Mahel","categorie":"U17 (- 17 ans)","naissance":"04/02/2010","mobile":"0661438300","parent":"","email":"alexane.guillemain@gmail.com","emailParent":"","licence":"90507555","personne":"9603589596"},{"nom":"CARVALHO DA SILVA Nuno","categorie":"Senior","naissance":"20/04/2005","mobile":"0769033884","parent":"","email":"nunod604@gmail.com","emailParent":"","licence":"90647603","personne":"2547424823"},{"nom":"CHARLES Victor","categorie":"Senior","naissance":"05/02/2001","mobile":"0649497100","parent":"","email":"victorcharles97100@gmail.com","emailParent":"","licence":"90122445","personne":"2544001662"},{"nom":"CHATELAIN Come","categorie":"U8 (- 8 ans)","naissance":"20/03/2019","mobile":"0679835239","parent":"0679835239","email":"fabien.chatelain@bbox.fr","emailParent":"fabien.chatelain@bbox.fr","licence":"88958785","personne":"9605320545"},{"nom":"CHAUVRON Theo","categorie":"Senior","naissance":"15/08/2002","mobile":"0668944624","parent":"","email":"theo.chauvron28@gmail.com","emailParent":"","licence":"89198004","personne":"2544380623"},{"nom":"CHBABI Imran","categorie":"U16 (- 16 ans)","naissance":"15/07/2011","mobile":"0621119752","parent":"0629119752","email":"imranleboss77@gmail.com","emailParent":"chbabimarouane@outlook.fr","licence":"90652707","personne":"2548262442"},{"nom":"CHEVALLIER Leo","categorie":"U16 (- 16 ans)","naissance":"14/11/2011","mobile":"0649605749","parent":"0649605749","email":"chevallier.a@hotmail.fr","emailParent":"chevallier.a@hotmail.fr","licence":"90413527","personne":"2548427555"},{"nom":"CINTRAT Jean Philippe","categorie":"Vétéran","naissance":"09/07/1967","mobile":"0612334040","parent":"","email":"jph.cintrat@orange.fr","emailParent":"","licence":"89831280","personne":"2544098966"},{"nom":"CLAVERE Enzo","categorie":"Senior","naissance":"13/09/2005","mobile":"0637351559","parent":"","email":"enzoclavere67@gmail.com","emailParent":"","licence":"89711767","personne":"2546706979"},{"nom":"CLEMENT Valentin","categorie":"Senior","naissance":"15/07/2004","mobile":"0659316457","parent":"","email":"clementvalentin15@gmail.com","emailParent":"","licence":"89527303","personne":"2546043172"},{"nom":"COCHENNEC Romain","categorie":"Senior","naissance":"29/08/2002","mobile":"0783553650","parent":"","email":"ccromain29@gmail.com","emailParent":"","licence":"90320868","personne":"2546262444"},{"nom":"CORNILLET Quentin","categorie":"Senior","naissance":"08/03/1997","mobile":"0787560556","parent":"","email":"qcornillet@gmail.com","emailParent":"","licence":"89648500","personne":"2545022913"},{"nom":"COUSIN SORBAIS Aaron","categorie":"U6 (- 6 ans)","naissance":"27/04/2021","mobile":"0787025924","parent":"0787025924","email":"julie_sorbais@msn.com","emailParent":"julie_sorbais@msn.com","licence":"90433758","personne":"9605838908"},{"nom":"COUVRAY Jonathan","categorie":"Vétéran","naissance":"22/05/1982","mobile":"0620921429","parent":"","email":"jonathancouvray@hotmail.fr","emailParent":"","licence":"89068489","personne":"1032120827"},{"nom":"DA ROCHA Anthony","categorie":"Vétéran","naissance":"18/09/1989","mobile":"0611394440","parent":"","email":"anthony@ecna.fr","emailParent":"","licence":"90321176","personne":"2368040402"},{"nom":"DA ROCHA Nelio","categorie":"U7 (- 7 ans)","naissance":"30/03/2020","mobile":"0611394440","parent":"0611394440","email":"a.darocha@outlook.com","emailParent":"a.darocha@outlook.com","licence":"88958248","personne":"9605433281"},{"nom":"DAUMIN Nolan","categorie":"Senior","naissance":"02/11/2005","mobile":"0663212677","parent":"","email":"nolan.daumin@gmail.com","emailParent":"","licence":"90579086","personne":"2547059698"},{"nom":"DAVORY Romain","categorie":"U16 (- 16 ans)","naissance":"03/07/2011","mobile":"0660396817","parent":"0660396817","email":"davorycorinne@gmail.com","emailParent":"davorycorinne@gmail.com","licence":"89068464","personne":"2548343605"},{"nom":"DE CONDAPPA Adem","categorie":"U17 (- 17 ans)","naissance":"27/03/2010","mobile":"0763146502","parent":"0687827518","email":"ademdc27@gmail.com","emailParent":"oualdness@yahoo.fr","licence":"90638359","personne":"2548315082"},{"nom":"DEMBELE Djime","categorie":"U8 (- 8 ans)","naissance":"12/01/2019","mobile":"0670963176","parent":"0670963176","email":"massir.dembele@gmail.com","emailParent":"massir.dembele@gmail.com","licence":"90316476","personne":"9604999971"},{"nom":"DEMBELE Mamady","categorie":"U11 (- 11 ans)","naissance":"04/12/2016","mobile":"0670963176","parent":"0670963176","email":"massir.dembele@gmail.com","emailParent":"massir.dembele@gmail.com","licence":"90316486","personne":"9604243647"},{"nom":"DERBOIS Christophe","categorie":"Vétéran","naissance":"22/09/1964","mobile":"0688600315","parent":"","email":"christophe.derbois@sfr.fr","emailParent":"","licence":"88994526","personne":"1082127937"},{"nom":"DHIRSON Joachim","categorie":"U7 (- 7 ans)","naissance":"26/07/2020","mobile":"0613507539","parent":"0613507539","email":"adou1701@gmail.com","emailParent":"adou1701@gmail.com","licence":"90289246","personne":"9605444908"},{"nom":"DIVANACH Loic","categorie":"Vétéran","naissance":"15/10/1970","mobile":"0676134455","parent":"","email":"licemm@orange.fr","emailParent":"","licence":"90172444","personne":"1020115974"},{"nom":"DODO Ezechias","categorie":"U6 (- 6 ans)","naissance":"24/08/2021","mobile":"0622918050","parent":"0622918050","email":"joelledodo@gmail.com","emailParent":"joelledodo@gmail.com","licence":"90583718","personne":"9605903315"},{"nom":"DODO J Christaime","categorie":"U11 (- 11 ans)","naissance":"24/04/2016","mobile":"0784882819","parent":"0784882819","email":"joelledodo@gmail.com","emailParent":"joelledodo@gmail.com","licence":"89130536","personne":"9603672383"},{"nom":"DODO Jeremie Tresor","categorie":"U14 (- 14 ans)","naissance":"03/01/2013","mobile":"0628255510","parent":"0628255510","email":"joelledodo@gmail.com","emailParent":"joelledodo@gmail.com","licence":"89130544","personne":"9603672509"},{"nom":"DODO Noe Mondesir","categorie":"U16 (- 16 ans)","naissance":"09/07/2011","mobile":"0784882819","parent":"0784882819","email":"joelledodo@gmail.com","emailParent":"joelledodo@gmail.com","licence":"89130530","personne":"9603672553"},{"nom":"DOLCINI Giorgio","categorie":"U13 (- 13 ans)","naissance":"25/11/2014","mobile":"0750685987","parent":"0750685987","email":"aadolcini@gmail.com","emailParent":"aadolcini@gmail.com","licence":"90434404","personne":"9605801510"},{"nom":"DOUCHET Maxence","categorie":"Senior","naissance":"21/12/2004","mobile":"0695925722","parent":"","email":"maxencedouchet7@gmail.com","emailParent":"","licence":"89130600","personne":"2547446646"},{"nom":"DUBUC GROUX Lucas","categorie":"U16 (- 16 ans)","naissance":"27/06/2011","mobile":"0615914118","parent":"0618366259","email":"fabricedubuc@gmail.com","emailParent":"corinne.groux062@gmail.com","licence":"89130625","personne":"2548141718"},{"nom":"DUCASTELLE Mael","categorie":"U9 (- 9 ans)","naissance":"18/12/2018","mobile":"0771160288","parent":"0771160288","email":"amelie.leroux@live.fr","emailParent":"amelie.leroux@live.fr","licence":"89499791","personne":"9604769003"},{"nom":"DURAND Jean Noel","categorie":"Vétéran","naissance":"03/12/1976","mobile":"0662704005","parent":"","email":"jndenedis@gmail.com","emailParent":"","licence":"90539841","personne":"1010729034"},{"nom":"DUVAL Axel","categorie":"U11 (- 11 ans)","naissance":"18/05/2016","mobile":"0670453214","parent":"0670453214","email":"rom1.duval@gmail.com","emailParent":"rom1.duval@gmail.com","licence":"89124163","personne":"9603671564"},{"nom":"DUVAL Sacha","categorie":"U14 (- 14 ans)","naissance":"02/11/2013","mobile":"0650758251","parent":"0650758251","email":"rom1.duval@gmail.com","emailParent":"rom1.duval@gmail.com","licence":"89130620","personne":"9603142416"},{"nom":"EL KHOUKHI Nahel","categorie":"U9 (- 9 ans)","naissance":"02/07/2018","mobile":"0671704177","parent":"0671704177","email":"ekopc@outlook.fr","emailParent":"ekopc@outlook.fr","licence":"90551260","personne":"9604568791"},{"nom":"EL YOUSSOUFI Ziyad","categorie":"U10 (- 10 ans)","naissance":"07/07/2017","mobile":"0750373475","parent":"0750373475","email":"malakfrance25@gmail.com","emailParent":"malakfrance25@gmail.com","licence":"90647587","personne":"9604073790"},{"nom":"ELKHEBBAZ Yacine","categorie":"U11 (- 11 ans)","naissance":"28/11/2016","mobile":"0626717468","parent":"0626717468","email":"lydiegou28@hotmail.fr","emailParent":"lydiegou28@hotmail.fr","licence":"90426817","personne":"9604143960"},{"nom":"EPINETTE Hugo","categorie":"U13 (- 13 ans)","naissance":"23/09/2014","mobile":"0766617289","parent":"0766617289","email":"epinette-blanchard@hotmail.fr","emailParent":"epinette-blanchard@hotmail.fr","licence":"90525864","personne":"9603667616"},{"nom":"FABRE Pascal","categorie":"Vétéran","naissance":"07/03/1965","mobile":"0607892965","parent":"","email":"pascalfabre28@hotmail.fr","emailParent":"","licence":"88990507","personne":"1092110346"},{"nom":"FANNOUSSI Aya","categorie":"U11 F (- 11 ans F)","naissance":"17/11/2016","mobile":"0625538344","parent":"0625538344","email":"khalid.fannoussi@gmail.com","emailParent":"khalid.fannoussi@gmail.com","licence":"90597026","personne":"9605801575"},{"nom":"FAUCON Charles","categorie":"U16 (- 16 ans)","naissance":"31/03/2011","mobile":"0621610114","parent":"0640603322","email":"tanguyal@hotmail.com","emailParent":"tanguyal@hotmail.com","licence":"89998711","personne":"2548405254"},{"nom":"FORTE Jules","categorie":"U10 (- 10 ans)","naissance":"27/11/2017","mobile":"0667101442","parent":"0667101442","email":"edwige.claire.cueille@gmail.com","emailParent":"edwige.claire.cueille@gmail.com","licence":"90433762","personne":"9605786725"},{"nom":"FOUQUET Morgan","categorie":"Vétéran","naissance":"03/11/1981","mobile":"0664932461","parent":"","email":"morganfouquet.mf@gmail.com","emailParent":"","licence":"88872506","personne":"1020582781"},{"nom":"FOURNIER Evan","categorie":"U14 (- 14 ans)","naissance":"10/08/2013","mobile":"0672761398","parent":"0672761398","email":"davidfournier28300@gmail.com","emailParent":"Davidfournier28300@gmail.com","licence":"90046982","personne":"9602395929"},{"nom":"FRANCOIS Gamalyel","categorie":"U8 (- 8 ans)","naissance":"24/01/2019","mobile":"0660219482","parent":"0660219482","email":"maritzafrancois.mf@gmail.com","emailParent":"maritzafrancois.mf@gmail.com","licence":"90317942","personne":"9604968802"},{"nom":"FRELAUD Stephane","categorie":"Vétéran","naissance":"04/11/1964","mobile":"0673005603","parent":"","email":"stephane.frelaud@wanadoo.fr","emailParent":"","licence":"90169601","personne":"2543939116"},{"nom":"GANOUATI Enzo","categorie":"U13 (- 13 ans)","naissance":"21/04/2014","mobile":"0625045596","parent":"0625585495","email":"imanoubenamor@gmail.com","emailParent":"imanoubenamor@gmail.com","licence":"90339712","personne":"9605109794"},{"nom":"GANOUATI Noam","categorie":"U11 (- 11 ans)","naissance":"24/12/2016","mobile":"0625585495","parent":"0625585495","email":"imanoubenamor@gmail.com","emailParent":"imanoubenamor@gmail.com","licence":"90298826","personne":"9605109787"},{"nom":"GARCIA Jeremi Luyambudi","categorie":"Senior","naissance":"02/03/2000","mobile":"0624604242","parent":"","email":"jerem.2441@gmail.com","emailParent":"","licence":"90551864","personne":"2546054362"},{"nom":"GARNIER Clement","categorie":"U10 (- 10 ans)","naissance":"05/05/2017","mobile":"0609890317","parent":"0609890317","email":"a.garnier@sce28.fr","emailParent":"a.garnier@sce28.fr","licence":"90427013","personne":"9605786479"},{"nom":"GARNIER Louis","categorie":"U12 (- 12 ans)","naissance":"23/05/2015","mobile":"0609890317","parent":"0609890317","email":"a.garnier@sce28.fr","emailParent":"a.garnier@sce28.fr","licence":"90426990","personne":"9605786510"},{"nom":"GAUTHERIN Oscar","categorie":"U13 (- 13 ans)","naissance":"21/03/2014","mobile":"0620134386","parent":"0620134386","email":"johanna.closson@orange.fr","emailParent":"johanna.closson@orange.fr","licence":"90461731","personne":"9604506965"},{"nom":"GEORGET Leandre","categorie":"U12 (- 12 ans)","naissance":"08/09/2015","mobile":"0672842799","parent":"0675533728","email":"mgt@hotmail.fr","emailParent":"mgt@hotmail.fr","licence":"90169774","personne":"9603209406"},{"nom":"GILBERT Quentin","categorie":"U13 (- 13 ans)","naissance":"11/06/2014","mobile":"0679827497","parent":"0679827497","email":"gregoirebarbaragilbert@outlook.fr","emailParent":"gregoirebarbaragilbert@outlook.fr","licence":"90362431","personne":"9604317598"},{"nom":"GODEREAUX Leo","categorie":"Senior","naissance":"21/08/2005","mobile":"0631740855","parent":"","email":"leo.godereaux.pro@gmail.com","emailParent":"","licence":"89585877","personne":"2546880035"},{"nom":"GONICHON Alexis","categorie":"U17 (- 17 ans)","naissance":"21/03/2010","mobile":"0769424750","parent":"0676722842","email":"alexis.nikopol@gmail.com","emailParent":"stephane.gonichon@eqiom.com","licence":"90584455","personne":"2548276775"},{"nom":"GONZALEZ Frederic","categorie":"Vétéran","naissance":"19/05/1969","mobile":"0672245958","parent":"","email":"fred28.gonzalez@gmail.com","emailParent":"","licence":"90169904","personne":"2543849232"},{"nom":"GOUGE Gesonn","categorie":"Senior","naissance":"21/08/1994","mobile":"0665202118","parent":"","email":"gesonngouge1@gmail.com","emailParent":"","licence":"89645391","personne":"1012156790"},{"nom":"GOUSSET Axel","categorie":"U8 (- 8 ans)","naissance":"16/03/2019","mobile":"0786874341","parent":"0786874341","email":"marine-jolly@live.fr","emailParent":"marine-jolly@live.fr","licence":"90647572","personne":"9605049356"},{"nom":"GRONDEUX Matheo","categorie":"Senior","naissance":"10/07/2004","mobile":"0687686628","parent":"","email":"mg.grondeux@gmail.com","emailParent":"","licence":"89123157","personne":"2546320803"},{"nom":"HAYES Axel","categorie":"U12 (- 12 ans)","naissance":"13/06/2015","mobile":"0664932461","parent":"0664932461","email":"morganfouquet.mf@gmail.com","emailParent":"morganfouquet.mf@gmail.com","licence":"89198088","personne":"9605312116"},{"nom":"HEITOR Carlos","categorie":"Vétéran","naissance":"21/03/1977","mobile":"0684667986","parent":"","email":"c.heitor@icloud.com","emailParent":"","licence":"90171328","personne":"2545932437"},{"nom":"HEITOR Julien","categorie":"Vétéran","naissance":"01/08/1981","mobile":"0658727858","parent":"","email":"julien.heitor@gmail.com","emailParent":"","licence":"90046578","personne":"2543490026"},{"nom":"HERCHE Eric","categorie":"Vétéran","naissance":"25/12/1967","mobile":"0644259101","parent":"","email":"eric.herche@sfr.fr","emailParent":"","licence":"89152535","personne":"1022165414"},{"nom":"IBARA Kaïs","categorie":"U7 (- 7 ans)","naissance":"21/04/2020","mobile":"0645979104","parent":"0645979104","email":"karim.ibara14@outlook.fr","emailParent":"karim.ibara14@outlook.fr","licence":"88958132","personne":"9605444879"},{"nom":"ISAMBERT Trystan","categorie":"Senior","naissance":"13/08/2003","mobile":"0610589601","parent":"","email":"isambert.trystan@gmail.com","emailParent":"","licence":"90046330","personne":"2545940380"},{"nom":"JOLY Arthur","categorie":"U16 (- 16 ans)","naissance":"06/11/2011","mobile":"0663770928","parent":"0650943560","email":"auleroux28@yahoo.fr","emailParent":"auleroux28@yahoo.fr","licence":"88956494","personne":"2548098717"},{"nom":"KAYETTE Ebenezer","categorie":"U13 (- 13 ans)","naissance":"28/06/2014","mobile":"0758188366","parent":"0753065038","email":"irenenobo14@gmail.com","emailParent":"irenenobo14@gmail.com","licence":"90611408","personne":"9605927816"},{"nom":"KHALED Adem","categorie":"Senior","naissance":"07/07/1998","mobile":"0658879415","parent":"","email":"ademkhaled972@gmail.com","emailParent":"","licence":"90054121","personne":"9603123147"},{"nom":"KOITA Cheikh","categorie":"U13 (- 13 ans)","naissance":"07/12/2014","mobile":"0641197197","parent":"0641197197","email":"thillosy@gmail.com","emailParent":"thillosy@gmail.com","licence":"90434471","personne":"9604136772"},{"nom":"KOYAYE Etan","categorie":"U9 (- 9 ans)","naissance":"08/01/2018","mobile":"0611182026","parent":"0611182026","email":"murfffy65@gmail.com","emailParent":"murfffy65@gmail.com","licence":"90646525","personne":"9605786582"},{"nom":"LAJUGIE Vincent","categorie":"Vétéran","naissance":"27/08/1982","mobile":"0633917407","parent":"","email":"vlajugie@gmail.com","emailParent":"","licence":"88990550","personne":"2319908958"},{"nom":"LANGLAIS Alyssia","categorie":"U10 F (- 10 ans F)","naissance":"27/01/2017","mobile":"0674039306","parent":"0674039306","email":"severinedoguet06@gmail.com","emailParent":"severinedoguet06@gmail.com","licence":"89068425","personne":"9605655247"},{"nom":"LASSAGNE Arthur","categorie":"U12 (- 12 ans)","naissance":"24/10/2015","mobile":"0650425578","parent":"0650425578","email":"lassagnedorothee@gmail.com","emailParent":"lassagnedorothee@gmail.com","licence":"89121180","personne":"9604594781"},{"nom":"LASSAGNE Jules","categorie":"U14 (- 14 ans)","naissance":"01/10/2013","mobile":"0761394592","parent":"0761394592","email":"lassagnedorothee@gmail.com","emailParent":"jules.lassagne@gmail.com","licence":"89121144","personne":"9604564960"},{"nom":"LEBRUN Tommy","categorie":"U7 (- 7 ans)","naissance":"03/09/2020","mobile":"0637479327","parent":"0637479327","email":"alexislebrun28@yahoo.fr","emailParent":"alexislebrun28@yahoo.fr","licence":"90322276","personne":"9605788654"},{"nom":"LECOCQ Eloy","categorie":"U19 (- 19 ans)","naissance":"30/09/2008","mobile":"0752966054","parent":"","email":"eloylecocq44@gmail.com","emailParent":"","licence":"89647014","personne":"2547065875"},{"nom":"LEPINE Loic","categorie":"Vétéran","naissance":"06/01/1982","mobile":"0645001872","parent":"","email":"loic.lepine@laposte.fr","emailParent":"","licence":"90571494","personne":"1020638171"},{"nom":"LEVENT Elias","categorie":"U8 (- 8 ans)","naissance":"27/03/2019","mobile":"0783529477","parent":"0783529477","email":"fionamaraucci@gmail.com","emailParent":"fionamaraucci@gmail.com","licence":"89068584","personne":"9605120214"},{"nom":"LHOSTE Natheo","categorie":"U11 (- 11 ans)","naissance":"01/09/2016","mobile":"0603901095","parent":"0603901095","email":"kimiferrari@orange.fr","emailParent":"kimiferrari@orange.fr","licence":"88959117","personne":"9605049272"},{"nom":"LIEU Liam","categorie":"U11 (- 11 ans)","naissance":"02/06/2016","mobile":"0649639666","parent":"0649639666","email":"hong.lieu82@gmail.com","emailParent":"hong.lieu82@gmail.com","licence":"90170852","personne":"9603392742"},{"nom":"LOPES FERREIRA DE AS Carlos","categorie":"Vétéran","naissance":"19/06/1971","mobile":"0632168637","parent":"","email":"carlosnora@hotmail.fr","emailParent":"","licence":"89830925","personne":"1000381498"},{"nom":"M'BAYE Samba","categorie":"Senior","naissance":"04/05/1994","mobile":"0601321933","parent":"","email":"smbaye28@gmail.com","emailParent":"","licence":"89711795","personne":"2544012475"},{"nom":"MACE Milo","categorie":"U16 (- 16 ans)","naissance":"16/12/2011","mobile":"0615116046","parent":"0615116046","email":"nmace@hotmail.fr","emailParent":"nmace@hotmail.fr","licence":"88961788","personne":"2548070952"},{"nom":"MAKNATT Adel","categorie":"U10 (- 10 ans)","naissance":"02/08/2017","mobile":"0760586234","parent":"0760586234","email":"antunes.jeny@gmail.com","emailParent":"antunes.jeny@gmail.com","licence":"90174642","personne":"9603962494"},{"nom":"MAKNATT Youssef","categorie":"Vétéran","naissance":"17/02/1982","mobile":"0781931841","parent":"","email":"maknatt@gmail.com","emailParent":"","licence":"90046825","personne":"2017113230"},{"nom":"MANSION Cyril","categorie":"Vétéran","naissance":"05/11/1975","mobile":"0644145672","parent":"","email":"cyril.mansion1975@gmail.com","emailParent":"","licence":"88961951","personne":"1020299100"},{"nom":"MANSION Evan","categorie":"Senior","naissance":"02/05/2006","mobile":"0674532788","parent":"","email":"evanmansion28@gmail.com","emailParent":"","licence":"88962131","personne":"2546963691"},{"nom":"MARCHAND Adrien","categorie":"U16 (- 16 ans)","naissance":"15/05/2011","mobile":"0663029463","parent":"0663029463","email":"madrien820@gmail.com","emailParent":"madrien820@gmail.com","licence":"90540405","personne":"2548002120"},{"nom":"MARCHAND Joaquim","categorie":"U10 (- 10 ans)","naissance":"16/04/2017","mobile":"0749582564","parent":"0749582564","email":"amandinecorreia87@gmail.com","emailParent":"amandinecorreia87@gmail.com","licence":"88929790","personne":"9605433392"},{"nom":"MARQUES SAMPAIO Diogo","categorie":"U6 (- 6 ans)","naissance":"13/04/2021","mobile":"0658107703","parent":"0658107703","email":"miguelmarquessampaio@gmail.com","emailParent":"miguelmarquessampaio@gmail.com","licence":"90594778","personne":"9605872130"},{"nom":"MARQUES SAMPAIO Fabio","categorie":"U12 (- 12 ans)","naissance":"12/01/2015","mobile":"0674586920","parent":"0674586920","email":"miguelmarquessampaio@gmail.com","emailParent":"miguelmarquessampaio@gmail.com","licence":"90426688","personne":"9603272638"},{"nom":"MARQUES SAMPAIO Marco","categorie":"U10 (- 10 ans)","naissance":"03/11/2017","mobile":"0658107703","parent":"0658107703","email":"miguelmarquessampaio@gmail.com","emailParent":"miguelmarquessampaio@gmail.com","licence":"90426731","personne":"9604181263"},{"nom":"MARQUES SAMPAIO Pedro","categorie":"U17 (- 17 ans)","naissance":"18/08/2010","mobile":"0674586920","parent":"","email":"pedromarquessampaio10@gmail.com","emailParent":"","licence":"90617359","personne":"2547771279"},{"nom":"MARTIGNE Gabin","categorie":"U16 (- 16 ans)","naissance":"31/08/2011","mobile":"0619135932","parent":"0619135932","email":"yavicg@gmail.com","emailParent":"yavicg@gmail.com","licence":"90413523","personne":"9602808575"},{"nom":"MARVIN Jean Marie","categorie":"Senior","naissance":"21/03/1998","mobile":"0672936891","parent":"","email":"marvin.jean-marie@outlook.fr","emailParent":"","licence":"89125098","personne":"9605338535"},{"nom":"MAUTE Anthony","categorie":"Senior","naissance":"04/06/2000","mobile":"0611631368","parent":"","email":"anthony.maute28@outlook.fr","emailParent":"","licence":"90305128","personne":"2544079238"},{"nom":"MAZOUMI Adem","categorie":"U12 (- 12 ans)","naissance":"01/03/2015","mobile":"0634538637","parent":"0634538637","email":"autochartres@outlook.fr","emailParent":"autochartres@outlook.fr","licence":"90318129","personne":"9605786673"},{"nom":"MERRAS Mokhtar","categorie":"Vétéran","naissance":"27/06/1978","mobile":"0677508960","parent":"","email":"mok78m@hotmail.com","emailParent":"","licence":"90078723","personne":"2543281189"},{"nom":"MIAKA Ribene","categorie":"Senior","naissance":"13/07/2002","mobile":"0695175531","parent":"","email":"rubenemiaka@gmail.com","emailParent":"","licence":"90584405","personne":"9603827221"},{"nom":"MILOME Ousmane","categorie":"U10 (- 10 ans)","naissance":"03/11/2017","mobile":"0668839914","parent":"0668839914","email":"cedric.milome@gmail.com","emailParent":"cedric.milome@gmail.com","licence":"90291305","personne":"9605505836"},{"nom":"MISCHLER Leo","categorie":"Senior","naissance":"18/09/2003","mobile":"0664225862","parent":"","email":"leomischler75@gmail.com","emailParent":"","licence":"89127141","personne":"2546037699"},{"nom":"MISHLER Loris","categorie":"Senior","naissance":"18/09/2003","mobile":"0664188042","parent":"","email":"lorismisch28@gmail.com","emailParent":"","licence":"89130584","personne":"9602812933"},{"nom":"MOREL Erwan","categorie":"Senior","naissance":"08/09/2001","mobile":"0783141019","parent":"","email":"erwanmorel08@gmail.com","emailParent":"","licence":"89701152","personne":"2544548436"},{"nom":"MORELLO Jules","categorie":"Senior U20 (- 20 ans)","naissance":"18/05/2007","mobile":"0624896234","parent":"","email":"morellojules@icloud.com","emailParent":"","licence":"89527320","personne":"2546605600"},{"nom":"MORVANY Dorian","categorie":"Senior","naissance":"03/11/2002","mobile":"0622181179","parent":"","email":"dorian.morvany28@gmail.com","emailParent":"","licence":"90467644","personne":"9602353558"},{"nom":"MOSTEFAI Mahdi","categorie":"U11 (- 11 ans)","naissance":"17/04/2016","mobile":"0749184558","parent":"0749184558","email":"rebhiaicha8@gmail.com","emailParent":"rebhiaicha8@gmail.com","licence":"90180293","personne":"9605417936"},{"nom":"NAIT CHIKHE Abderrazak","categorie":"Senior","naissance":"11/02/1993","mobile":"0782197013","parent":"","email":"abde.naitchikhe@live.fr","emailParent":"","licence":"90048306","personne":"2547784936"},{"nom":"NEAU Fabrice","categorie":"Vétéran","naissance":"13/04/1977","mobile":"0613159397","parent":"","email":"fabrice.neau28@orange.fr","emailParent":"","licence":"89153934","personne":"1082114837"},{"nom":"NEAU Nolan","categorie":"U15 (- 15 ans)","naissance":"05/06/2012","mobile":"0613159397","parent":"0613159397","email":"fabrice.neau28@orange.fr","emailParent":"fabrice.neau28@orange.fr","licence":"89153936","personne":"2548478487"},{"nom":"PAVARD Arthur","categorie":"U16 (- 16 ans)","naissance":"08/01/2011","mobile":"0671478800","parent":"0671478800","email":"claire.bressand.28@hotmail.fr","emailParent":"claire.bressand.28@hotmail.fr","licence":"90004614","personne":"2548441640"},{"nom":"PERIER Baptiste","categorie":"Senior","naissance":"16/12/2002","mobile":"0661900337","parent":"","email":"babaperier@gmail.com","emailParent":"","licence":"89527318","personne":"2547234431"},{"nom":"PIZIE Yohann","categorie":"Vétéran","naissance":"03/06/1975","mobile":"0680571211","parent":"","email":"pizie.yohann@wanadoo.fr","emailParent":"","licence":"90143860","personne":"1020900676"},{"nom":"RENARD Malo","categorie":"U9 (- 9 ans)","naissance":"14/01/2018","mobile":"0675865188","parent":"0675865188","email":"charlenemika@hotmail.fr","emailParent":"charlenemika@hotmail.fr","licence":"90647562","personne":"9604569840"},{"nom":"RENNESON Thomas","categorie":"Vétéran","naissance":"07/11/1985","mobile":"0768172636","parent":"","email":"thomasrenneson@gmail.com","emailParent":"","licence":"90507441","personne":"1042111632"},{"nom":"SAADOUNE Adam","categorie":"U10 (- 10 ans)","naissance":"31/07/2017","mobile":"0667934821","parent":"0667934821","email":"hayat.saadoune28@gmail.com","emailParent":"hayat.saadoune28@gmail.com","licence":"90454891","personne":"9604084490"},{"nom":"SAÏD ALI El Yassin","categorie":"U11 (- 11 ans)","naissance":"08/09/2016","mobile":"0782665156","parent":"0782665156","email":"yassine.saidali20@gmail.com","emailParent":"yassine.saidali20@gmail.com","licence":"90362395","personne":"9605309761"},{"nom":"SEVESTRE LAUNAY Noham","categorie":"U16 (- 16 ans)","naissance":"02/10/2011","mobile":"0629225637","parent":"0629225637","email":"egon_28@live.fr","emailParent":"egon_28@live.fr","licence":"89130610","personne":"2548074524"},{"nom":"SILVA PARIS Afonso","categorie":"U16 (- 16 ans)","naissance":"24/01/2011","mobile":"0769493021","parent":"0771885567","email":"soniadsilvaz@gmail.com","emailParent":"soniadsilvaz@gmail.com","licence":"90582802","personne":"9602680382"},{"nom":"SOUTON Sebastien","categorie":"Vétéran","naissance":"03/02/1982","mobile":"0614873028","parent":"","email":"sebastien.souton@sfr.fr","emailParent":"","licence":"90169924","personne":"1020587372"},{"nom":"TACHAT Victor","categorie":"U9 (- 9 ans)","naissance":"12/09/2018","mobile":"0609175795","parent":"0609175795","email":"laureverite91@gmail.com","emailParent":"laureverite91@gmail.com","licence":"90291627","personne":"9604568749"},{"nom":"TALATA Kaci","categorie":"Senior","naissance":"27/10/2003","mobile":"0766891103","parent":"","email":"kaci.talata@live.fr","emailParent":"","licence":"90301282","personne":"2546666734"},{"nom":"TALMANT Eliott","categorie":"U17 (- 17 ans)","naissance":"12/04/2010","mobile":"0786873619","parent":"","email":"talmanteliott@gmail.com","emailParent":"","licence":"88954511","personne":"2548514386"},{"nom":"THUILLIER Kameron","categorie":"U16 (- 16 ans)","naissance":"21/01/2011","mobile":"0769214328","parent":"0769214328","email":"thuillier.bruno2@free.fr","emailParent":"thuillier.bruno2@free.fr","licence":"90143815","personne":"9603989445"},{"nom":"TIFFAY Manon","categorie":"U10 F (- 10 ans F)","naissance":"23/08/2017","mobile":"0649730108","parent":"0649730108","email":"virginie.mouchoux@yahoo.fr","emailParent":"virginie.mouchoux@yahoo.fr","licence":"90600138","personne":"9605903359"},{"nom":"TORUK Ali","categorie":"U7 (- 7 ans)","naissance":"17/04/2020","mobile":"0666742851","parent":"0666742851","email":"murat.toruk@outlook.fr","emailParent":"murat.toruk@outlook.fr","licence":"88929540","personne":"9605404975"},{"nom":"TORUK Ilhan","categorie":"U11 (- 11 ans)","naissance":"01/09/2016","mobile":"0666742851","parent":"0666742851","email":"murat.toruk@outlook.fr","emailParent":"murat.toruk@outlook.fr","licence":"88929497","personne":"9603702712"},{"nom":"VAN POUCKE Noa","categorie":"U16 (- 16 ans)","naissance":"06/07/2011","mobile":"0684615711","parent":"0684615711","email":"vanpoucke.luc@gmail.com","emailParent":"vanpoucke.luc@gmail.com","licence":"90504912","personne":"2548136318"},{"nom":"VASLIN Loïs","categorie":"U7 (- 7 ans)","naissance":"22/06/2020","mobile":"0621901199","parent":"0621901199","email":"jessie.vaslin@gmail.com","emailParent":"jessie.vaslin@gmail.com","licence":"90305123","personne":"9605788663"},{"nom":"VIEGAS Liam","categorie":"U9 (- 9 ans)","naissance":"11/03/2018","mobile":"0615426481","parent":"0615426481","email":"princessanatomy@gmail.com","emailParent":"princessanatomy@gmail.com","licence":"90289930","personne":"9604568812"},{"nom":"VULLIRZ Antonin","categorie":"U16 (- 16 ans)","naissance":"14/06/2011","mobile":"0633306236","parent":"0633306236","email":"vullirzantonin5@gmail.com","emailParent":"dvullirz2@hotmail.fr","licence":"90652817","personne":"2548283995"},{"nom":"WOLF Gabin","categorie":"U8 (- 8 ans)","naissance":"19/02/2019","mobile":"0633337316","parent":"0633337316","email":"camille.malterre@gmail.com","emailParent":"camille.malterre@gmail.com","licence":"90604539","personne":"9605093700"},{"nom":"ZERBO Idrissa","categorie":"Senior","naissance":"09/11/1998","mobile":"0659666437","parent":"","email":"zerbo226@gmail.com","emailParent":"","licence":"90510328","personne":"2547694611"},{"nom":"ZNIM Imran","categorie":"U8 (- 8 ans)","naissance":"22/07/2019","mobile":"0664109015","parent":"0664109015","email":"alichachaznim@gmail.com","emailParent":"alichachaznim@gmail.com","licence":"90289025","personne":"9605785945"},{"nom":"ZOKOU Jayden","categorie":"U8 (- 8 ans)","naissance":"12/10/2019","mobile":"0767256082","parent":"0767256082","email":"ericzokou.ez@gmail.com","emailParent":"ericzokou.ez@gmail.com","licence":"88956888","personne":"9605433309"}];
+
+    const state = {
+      players: [],
+      query: "",
+      category: "Tous",
+      meta: { source: "", fileName: "", savedAt: "" },
+    };
+
+    const searchEl = document.getElementById("search");
+    const clearBtn = document.getElementById("clearSearch");
+    const chipsEl = document.getElementById("chips");
+    const listEl = document.getElementById("list");
+    const statusEl = document.getElementById("status");
+    const modalEl = document.getElementById("modal");
+    const modalMetaEl = document.getElementById("modalMeta");
+    const forgetBtn = document.getElementById("forgetBtn");
+    const fileInput = document.getElementById("fileInput");
+    const dropOverlay = document.getElementById("dropOverlay");
+    const toastEl = document.getElementById("toast");
+
+    let toastTimer = 0;
+    let dragDepth = 0;
+
+    function fold(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+    }
+
+    function normHeader(value) {
+      return String(value || "")
+        .replace(/\(e\)/gi, "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+    }
+
+    function digitsOnly(value) {
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return Math.round(value).toFixed(0);
+      }
+      if (value == null) return "";
+      let text = String(value).trim();
+      if (/e\+/i.test(text)) {
+        const asNumber = Number(text);
+        if (Number.isFinite(asNumber)) text = Math.round(asNumber).toFixed(0);
+      }
+      if (text.endsWith(".0")) text = text.slice(0, -2);
+      return text.replace(/\D/g, "");
+    }
+
+    function normalizePhone(value) {
+      if (value instanceof Date) return "";
+      let digits = digitsOnly(value);
+      if (!digits) return "";
+      if (digits.length === 9) digits = "0" + digits;
+      if (digits.length === 11 && digits.startsWith("33")) digits = "0" + digits.slice(2);
+      return digits;
+    }
+
+    function normalizeId(value, size) {
+      let digits = digitsOnly(value);
+      if (!digits) return "";
+      if (digits.length < size) digits = digits.padStart(size, "0");
+      return digits;
+    }
+
+    function formatDate(value) {
+      if (value == null || value === "") return "";
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        const useUtc = value.getUTCHours() === 0 && value.getUTCMinutes() === 0 && value.getUTCSeconds() === 0;
+        const day = useUtc ? value.getUTCDate() : value.getDate();
+        const month = (useUtc ? value.getUTCMonth() : value.getMonth()) + 1;
+        const year = useUtc ? value.getUTCFullYear() : value.getFullYear();
+        return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
+      }
+      if (typeof value === "number" && value > 20000 && value < 80000) {
+        const utc = new Date(Date.UTC(1899, 11, 30) + Math.round(value) * 86400000);
+        return `${String(utc.getUTCDate()).padStart(2, "0")}/${String(utc.getUTCMonth() + 1).padStart(2, "0")}/${utc.getUTCFullYear()}`;
+      }
+      const text = String(value).trim();
+      const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+      const fr = text.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+      if (fr) return `${fr[1].padStart(2, "0")}/${fr[2].padStart(2, "0")}/${fr[3]}`;
+      return text;
+    }
+
+    function prettyPhone(value) {
+      if (!value) return "";
+      if (value.length === 10) return value.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
+      return value;
+    }
+
+    function groupDigits(value) {
+      return String(value || "").replace(/(\d{2})(?=\d)/g, "$1 ").trim();
+    }
+
+    function telHref(value) {
+      if (!value) return "";
+      if (value.startsWith("0")) return `tel:+33${value.slice(1)}`;
+      return `tel:+${value}`;
+    }
+
+    function shortCategory(value) {
+      const text = String(value || "").trim();
+      if (!text) return "Autre";
+      return text.split("(")[0].trim() || text;
+    }
+
+    function isUpperToken(token) {
+      const letters = token
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^A-Za-z]/g, "");
+      return letters.length > 0 && letters === letters.toUpperCase();
+    }
+
+    function splitNomPrenom(full) {
+      const parts = String(full || "").trim().split(/\s+/).filter(Boolean);
+      if (parts.length <= 1) return { nom: parts[0] || "", prenom: "" };
+      if (parts.every(isUpperToken)) return { nom: parts.join(" "), prenom: "" };
+      let index = 0;
+      while (index < parts.length - 1 && isUpperToken(parts[index])) index += 1;
+      if (index === 0) return { nom: parts[0], prenom: parts.slice(1).join(" ") };
+      return { nom: parts.slice(0, index).join(" "), prenom: parts.slice(index).join(" ") };
+    }
+
+    function normalizeEmail(value) {
+      const text = String(value == null ? "" : value).trim().replace(/\s+/g, "");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) return "";
+      return text;
+    }
+
+    function finalizePlayer(raw) {
+      const prenomGiven = String(raw.prenom || "").trim();
+      const nomGiven = String(raw.nom || "").trim();
+      const split = prenomGiven ? { nom: nomGiven, prenom: prenomGiven } : splitNomPrenom(nomGiven);
+      let mobile = normalizePhone(raw.mobile);
+      let parent = normalizePhone(raw.parent);
+      let contact = normalizePhone(raw.contact);
+      let domicile = normalizePhone(raw.domicile);
+      if (parent === mobile) parent = "";
+      if (contact === mobile || contact === parent) contact = "";
+      if (domicile === mobile || domicile === parent || domicile === contact) domicile = "";
+      let email = normalizeEmail(raw.email);
+      let emailParent = normalizeEmail(raw.emailParent);
+      const categorie = String(raw.categorie || "").trim();
+      return {
+        nom: split.nom,
+        prenom: split.prenom,
+        nomComplet: `${split.nom} ${split.prenom}`.trim(),
+        categorie,
+        categorieCourte: shortCategory(categorie),
+        naissance: formatDate(raw.naissance),
+        mobile,
+        parent,
+        contact,
+        domicile,
+        email,
+        emailParent,
+        licence: normalizeId(raw.licence, 8),
+        personne: normalizeId(raw.personne, 10),
+      };
+    }
+
+    function sortPlayers(list) {
+      return list.slice().sort((a, b) =>
+        a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }) ||
+        a.prenom.localeCompare(b.prenom, "fr", { sensitivity: "base" })
+      );
+    }
+
+    function catRank(label) {
+      const order = [
+        "u6", "u7", "u8", "u9", "u10", "u10 f", "u11", "u11 f", "u12", "u13", "u14", "u15",
+        "u16", "u17", "u18", "u19", "u20", "senior", "seniors", "veteran", "veterans",
+        "dirigeant", "dirigeants", "dirigeante", "educateur", "educateur federal", "arbitre", "senior u20", "autre",
+      ];
+      const index = order.indexOf(fold(label));
+      return index === -1 ? 500 : index;
+    }
+
+    function pickCol(headers, predicates) {
+      const norms = headers.map(normHeader);
+      for (const predicate of predicates) {
+        const index = norms.findIndex(predicate);
+        if (index >= 0) return index;
+      }
+      return -1;
+    }
+
+    function findHeaderRow(matrix) {
+      const limit = Math.min(matrix.length, 25);
+      for (let i = 0; i < limit; i += 1) {
+        const norms = (matrix[i] || []).map(normHeader);
+        const hasName = norms.some((header) => header.includes("nom") && header.includes("prenom"));
+        const hasLicence = norms.some((header) => header.includes("licence"));
+        if (hasName || hasLicence) return i;
+      }
+      return 0;
+    }
+
+    function cell(row, index) {
+      if (index < 0) return "";
+      const value = row[index];
+      return value == null ? "" : value;
+    }
+
+    function parseWorkbook(buffer) {
+      if (typeof XLSX === "undefined") {
+        throw new Error("Lecteur Excel indisponible. Vérifiez la connexion, puis réessayez.");
+      }
+      const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: "", blankrows: false });
+      const headerIndex = findHeaderRow(matrix);
+      const headers = matrix[headerIndex] || [];
+      const columns = {
+        nom: pickCol(headers, [
+          (header) => header === "nom prenom" || header.startsWith("nom prenom "),
+          (header) => header.includes("nom") && header.includes("prenom"),
+        ]),
+        categorie: pickCol(headers, [
+          (header) => header === "sous categorie" || header.startsWith("sous categorie "),
+          (header) => header === "categorie" || header.startsWith("categorie "),
+        ]),
+        naissance: pickCol(headers, [
+          (header) => header === "ne le" || header.startsWith("ne le "),
+          (header) => header.includes("naissance"),
+        ]),
+        mobile: pickCol(headers, [
+          (header) => header === "mobile personnel 1" || header.startsWith("mobile personnel 1 "),
+          (header) => header === "mobile personnel" || header.startsWith("mobile personnel "),
+        ]),
+        parent: pickCol(headers, [
+          (header) => header === "tel mobile repr legal 1 1" || header.startsWith("tel mobile repr legal 1 1"),
+          (header) => header.includes("tel") && header.includes("mobile") && header.includes("repr") && header.includes("legal") && header.includes("1 1"),
+          (header) => (header.includes("mobile") || header.includes("tel")) && header.includes("repr") && header.includes("legal") && !header.includes("domicile"),
+        ]),
+        email: pickCol(headers, [
+          (header) => header === "email principal 1" || header.startsWith("email principal 1 "),
+          (header) => header === "email principal",
+        ]),
+        emailParent: pickCol(headers, [
+          (header) => header === "email repr legal 1 1" || header.startsWith("email repr legal 1 1"),
+          (header) => header.includes("email") && header.includes("repr") && header.includes("legal") && header.includes("1 1"),
+        ]),
+        contact: pickCol(headers, [
+          (header) => header === "telephone autre 1" || header.startsWith("telephone autre 1"),
+        ]),
+        contact2: pickCol(headers, [
+          (header) => header === "telephone autre 2" || header.startsWith("telephone autre 2"),
+        ]),
+        domicile: pickCol(headers, [
+          (header) => header === "telephone domicile" || header.startsWith("telephone domicile "),
+        ]),
+        licence: pickCol(headers, [
+          (header) => header === "numero licence 1" || header.startsWith("numero licence 1"),
+          (header) => (header === "numero licence" || header.startsWith("numero licence ")) && !header.endsWith(" 2"),
+          (header) => header.includes("licence") && !/\b2$/.test(header),
+        ]),
+        personne: pickCol(headers, [
+          (header) => header === "numero personne 1" || header.startsWith("numero personne 1"),
+          (header) => header.startsWith("numero personne") && !header.endsWith(" 2"),
+        ]),
+      };
+
+      if (columns.nom < 0 && columns.licence < 0) {
+        throw new Error("Colonnes FFF introuvables dans ce fichier.");
+      }
+
+      const players = [];
+      for (let i = headerIndex + 1; i < matrix.length; i += 1) {
+        const row = matrix[i] || [];
+        const fullName = String(cell(row, columns.nom) || "").trim();
+        const licenceRaw = cell(row, columns.licence);
+        if (!fullName && !String(licenceRaw || "").trim()) continue;
+        if (fold(fullName).includes("nom") && fold(fullName).includes("prenom")) continue;
+        let contact = normalizePhone(cell(row, columns.contact)) || normalizePhone(cell(row, columns.contact2));
+        players.push(finalizePlayer({
+          nom: fullName,
+          categorie: cell(row, columns.categorie),
+          naissance: cell(row, columns.naissance),
+          mobile: cell(row, columns.mobile),
+          parent: cell(row, columns.parent),
+          contact,
+          domicile: cell(row, columns.domicile),
+          licence: licenceRaw,
+          personne: cell(row, columns.personne),
+          email: cell(row, columns.email),
+          emailParent: cell(row, columns.emailParent),
+        }));
+      }
+
+      return sortPlayers(players.filter((player) => player.nom || player.licence));
+    }
+
+    function isZip(buffer) {
+      const bytes = new Uint8Array(buffer);
+      return bytes.length > 2 && bytes[0] === 0x50 && bytes[1] === 0x4b;
+    }
+
+    function formatStamp(iso) {
+      if (!iso) return "";
+      const date = new Date(iso);
+      if (Number.isNaN(date.getTime())) return "";
+      return date.toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" });
+    }
+
+    function sourceLabel() {
+      const count = state.players.length;
+      const noun = `${count} licencié${count > 1 ? "s" : ""}`;
+      if (state.meta.source === "local") {
+        const when = formatStamp(state.meta.savedAt);
+        return `${noun} · base enregistrée${state.meta.fileName ? " · " + state.meta.fileName : ""}${when ? " · " + when : ""}`;
+      }
+      if (state.meta.source === "fichier") return `${noun} · fichier ${state.meta.fileName}`;
+      return `${noun} · copie intégrée de ${state.meta.fileName || "44201613d.xlsx"}`;
+    }
+
+    function loadStored() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (!raw || !Array.isArray(raw.players) || !raw.players.length) return null;
+        return {
+          players: sortPlayers(raw.players.map(finalizePlayer)),
+          fileName: raw.fileName || "base locale",
+          savedAt: raw.savedAt || "",
+        };
+      } catch {
+        return null;
+      }
+    }
+
+    function saveStored(players, fileName) {
+      const payload = {
+        savedAt: new Date().toISOString(),
+        fileName,
+        players,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      return payload.savedAt;
+    }
+
+    function categoriesOf(players) {
+      const labels = [...new Set(players.map((player) => player.categorieCourte).filter(Boolean))];
+      labels.sort((a, b) => catRank(a) - catRank(b) || a.localeCompare(b, "fr", { sensitivity: "base" }));
+      return labels;
+    }
+
+    function matchesQuery(player, query) {
+      if (!query) return true;
+      const folded = fold(query).trim();
+      const digits = query.replace(/\D/g, "");
+      const blob = fold(`${player.nom} ${player.prenom} ${player.nomComplet} ${player.categorie} ${player.categorieCourte} ${player.email || ""} ${player.emailParent || ""}`);
+      if (folded && blob.includes(folded)) return true;
+      if (digits && (player.licence.includes(digits) || player.personne.includes(digits))) return true;
+      return false;
+    }
+
+    function visiblePlayers() {
+      return state.players.filter((player) => {
+        if (state.category !== "Tous" && player.categorieCourte !== state.category) return false;
+        return matchesQuery(player, state.query);
+      });
+    }
+
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[char]));
+    }
+
+    function iconPhone() {
+      return `<svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3h3l1.5 4-2 1.2a12 12 0 0 0 5.3 5.3L17 11.5 21 13v3c0 1-.9 2-2 2C10 18 6 14 6 5c0-1.1.9-2 2-2z" stroke-linejoin="round"></path></svg>`;
+    }
+
+    function iconMail() {
+      return `<svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M4 7l8 6 8-6"></path></svg>`;
+    }
+
+    function iconCopy() {
+      return `<svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5h10"></path></svg>`;
+    }
+
+    function iconCheck() {
+      return `<svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L20 7" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+    }
+
+    function contactChip(action) {
+      const parent = action.who === "Parent";
+      const mail = action.kind === "mail";
+      const tone = parent
+        ? "bg-red-50 text-[#B91C1C] ring-1 ring-red-100"
+        : mail
+          ? "bg-zinc-100 text-zinc-800"
+          : "bg-zinc-950 text-white";
+      return `<a href="${esc(action.href)}" class="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md px-2 text-[11px] font-semibold leading-none ${tone}" title="${esc(action.title)}" aria-label="${esc(action.aria)}">${action.kind === "mail" ? iconMail() : iconPhone()}<span class="truncate">${esc(action.who)}</span></a>`;
+    }
+
+    function renderCard(player) {
+      const actions = [];
+      if (player.mobile) {
+        actions.push({
+          kind: "tel",
+          who: "Joueur",
+          href: telHref(player.mobile),
+          title: prettyPhone(player.mobile),
+          aria: `Appeler le joueur ${prettyPhone(player.mobile)}`,
+        });
+      }
+      if (player.email) {
+        actions.push({
+          kind: "mail",
+          who: "Joueur",
+          href: `mailto:${encodeURI(player.email)}`,
+          title: player.email,
+          aria: `Envoyer un e-mail au joueur ${player.email}`,
+        });
+      }
+      if (player.parent) {
+        actions.push({
+          kind: "tel",
+          who: "Parent",
+          href: telHref(player.parent),
+          title: prettyPhone(player.parent),
+          aria: `Appeler le représentant légal ${prettyPhone(player.parent)}`,
+        });
+      }
+      if (player.emailParent) {
+        actions.push({
+          kind: "mail",
+          who: "Parent",
+          href: `mailto:${encodeURI(player.emailParent)}`,
+          title: player.emailParent,
+          aria: `Envoyer un e-mail au représentant légal ${player.emailParent}`,
+        });
+      }
+
+      const licenceBlock = player.licence
+        ? `<div class="mt-1.5 flex w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-lg bg-[#DC2626] py-1 pl-2 pr-1 text-white">
+            <span class="licence-kicker shrink-0 text-[10px] font-semibold uppercase tracking-wide text-white/75">Lic.</span>
+            <span class="licence-num min-w-0 flex-1 truncate text-[15px] font-bold leading-none tracking-wide tabular-nums">${esc(groupDigits(player.licence))}</span>
+            <button type="button" data-copy="${esc(player.licence)}" class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-white hover:bg-black/15" aria-label="Copier le numéro de licence">${iconCopy()}</button>
+          </div>`
+        : `<p class="mt-1.5 text-xs font-medium text-zinc-400">Licence absente</p>`;
+
+      const personne = player.personne
+        ? `<p class="mt-1 text-[11px] leading-none text-zinc-500">Personne <span class="tabular-nums">${esc(groupDigits(player.personne))}</span></p>`
+        : "";
+
+      return `<article class="licence-card w-full min-w-0 max-w-full overflow-hidden rounded-xl bg-white px-2.5 py-2 text-zinc-950 shadow-sm ring-1 ring-black/5 xl:max-w-sm" data-licence="${esc(player.licence)}">
+        <div class="flex items-start justify-between gap-1.5">
+          <div class="min-w-0">
+            <h2 class="truncate text-[15px] font-bold uppercase leading-tight tracking-tight" title="${esc(player.nom)}">${esc(player.nom)}</h2>
+            <p class="truncate text-[13px] font-medium leading-tight text-zinc-600" title="${esc(player.prenom)}">${esc(player.prenom)}</p>
+          </div>
+          <span class="mt-0.5 shrink-0 rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600" title="${esc(player.categorie)}">${esc(player.categorieCourte)}</span>
+        </div>
+        ${licenceBlock}
+        ${personne}
+        ${actions.length ? `<div class="licence-actions mt-1.5">${actions.map(contactChip).join("")}</div>` : ""}
+      </article>`;
+    }
+
+    function render() {
+      const categories = categoriesOf(state.players);
+      if (state.category !== "Tous" && !categories.includes(state.category)) state.category = "Tous";
+      const scrollLeft = chipsEl.scrollLeft;
+      const queried = state.players.filter((player) => matchesQuery(player, state.query));
+      const counts = new Map();
+      queried.forEach((player) => {
+        counts.set(player.categorieCourte, (counts.get(player.categorieCourte) || 0) + 1);
+      });
+
+      const chipLabels = ["Tous", ...categories.filter((label) => label === state.category || !state.query || counts.get(label))];
+      chipsEl.innerHTML = chipLabels.map((label) => {
+        const active = label === state.category;
+        const count = label === "Tous" ? queried.length : (counts.get(label) || 0);
+        return `<button type="button" role="tab" aria-selected="${active}" data-category="${esc(label)}" class="h-10 shrink-0 rounded-full px-3.5 text-sm font-bold ${active ? "bg-[#DC2626] text-white" : "bg-zinc-800 text-zinc-100 ring-1 ring-white/10"}">${esc(label)} <span class="tabular-nums ${active ? "text-white/80" : "text-zinc-400"}">${count}</span></button>`;
+      }).join("");
+      chipsEl.scrollLeft = scrollLeft;
+
+      const players = visiblePlayers();
+      if (!state.players.length) {
+        listEl.innerHTML = `<div class="col-span-full rounded-3xl border border-dashed border-white/15 px-6 py-12 text-center">
+          <p class="text-lg font-bold">Aucune base chargée</p>
+          <p class="mt-2 text-sm text-zinc-400">Glissez un export .xlsx ou utilisez « Mettre à jour la base Excel ».</p>
+        </div>`;
+      } else if (!players.length) {
+        const anywhere = state.players.filter((player) => matchesQuery(player, state.query)).length;
+        const widen = state.category !== "Tous" && anywhere
+          ? `<button type="button" data-category="Tous" class="mt-4 h-11 rounded-2xl bg-[#DC2626] px-4 text-sm font-bold text-white">${anywhere === 1 ? "Voir le résultat, toutes catégories" : `Voir les ${anywhere} résultats, toutes catégories`}</button>`
+          : "";
+        listEl.innerHTML = `<div class="col-span-full rounded-3xl bg-zinc-900 px-6 py-12 text-center">
+          <p class="text-lg font-bold">Aucun licencié</p>
+          <p class="mt-2 text-sm text-zinc-400">Essayez un autre nom, un numéro ou une catégorie.</p>
+          ${widen}
+        </div>`;
+      } else {
+        listEl.innerHTML = players.map(renderCard).join("");
+      }
+
+      const filtered = state.query || state.category !== "Tous";
+      statusEl.textContent = filtered
+        ? `${players.length} résultat${players.length > 1 ? "s" : ""} · ${state.category === "Tous" ? "toutes catégories" : state.category}`
+        : sourceLabel();
+
+      const badge = document.getElementById("countBadge");
+      if (badge) badge.textContent = String(players.length);
+    }
+
+    function openModal() {
+      const when = formatStamp(state.meta.savedAt);
+      if (state.meta.source === "local") {
+        modalMetaEl.textContent = `Base enregistrée${state.meta.fileName ? " depuis " + state.meta.fileName : ""}${when ? " le " + when : ""}. ${state.players.length} licenciés.`;
+        forgetBtn.classList.remove("hidden");
+      } else if (state.meta.source === "fichier") {
+        modalMetaEl.textContent = `Liste lue dans le dossier : ${state.meta.fileName}. ${state.players.length} licenciés.`;
+        forgetBtn.classList.add("hidden");
+      } else {
+        modalMetaEl.textContent = `Copie intégrée de ${state.meta.fileName || "44201613d.xlsx"} (${state.players.length} licenciés). Un fichier déposé remplace cette copie et reste mémorisé ici.`;
+        forgetBtn.classList.add("hidden");
+      }
+      modalEl.classList.remove("hidden");
+    }
+
+    function closeModal() {
+      modalEl.classList.add("hidden");
+      fileInput.value = "";
+    }
+
+    function showToast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.remove("hidden");
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toastEl.classList.add("hidden"), 1800);
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.left = "-9999px";
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+    }
+
+    function applyPlayers(players, meta) {
+      state.players = sortPlayers(players.map(finalizePlayer));
+      state.meta = meta;
+      state.category = "Tous";
+      state.query = "";
+      searchEl.value = "";
+      syncClearButton();
+      render();
+    }
+
+    async function importFile(file) {
+      if (!file) return;
+      try {
+        const buffer = await file.arrayBuffer();
+        if (!isZip(buffer) && !/\.xls$/i.test(file.name)) {
+          throw new Error("Ce fichier n'est pas un classeur Excel.");
+        }
+        const players = parseWorkbook(buffer);
+        if (!players.length) throw new Error("Aucun licencié trouvé dans ce fichier.");
+        const savedAt = saveStored(players, file.name);
+        applyPlayers(players, { source: "local", fileName: file.name, savedAt });
+        closeModal();
+        showToast(`${players.length} licenciés enregistrés`);
+      } catch (error) {
+        showToast(error.message || "Import impossible");
+      }
+    }
+
+    async function tryFetchWorkbook() {
+      if (typeof XLSX === "undefined" || location.protocol === "file:") return null;
+      for (const name of FILE_CANDIDATES) {
+        try {
+          const response = await fetch(encodeURI(name), { cache: "no-store" });
+          if (!response.ok) continue;
+          const buffer = await response.arrayBuffer();
+          if (!isZip(buffer)) continue;
+          const players = parseWorkbook(buffer);
+          if (players.length) return { players, fileName: name };
+        } catch {
+          /* fichier absent ou lecture impossible */
+        }
+      }
+      return null;
+    }
+
+    async function boot() {
+      const stored = loadStored();
+      if (stored) {
+        applyPlayers(stored.players, { source: "local", fileName: stored.fileName, savedAt: stored.savedAt });
+        return;
+      }
+      const fetched = await tryFetchWorkbook();
+      if (fetched) {
+        applyPlayers(fetched.players, { source: "fichier", fileName: fetched.fileName, savedAt: "" });
+        return;
+      }
+      applyPlayers(EMBEDDED_PLAYERS, { source: "integre", fileName: "44201613d.xlsx", savedAt: "" });
+    }
+
+    document.getElementById("updateBtn").addEventListener("click", openModal);
+    forgetBtn.addEventListener("click", async () => {
+      localStorage.removeItem(STORAGE_KEY);
+      closeModal();
+      showToast("Relecture du fichier du dossier");
+      await boot();
+    });
+    modalEl.addEventListener("click", (event) => {
+      if (event.target.closest("[data-close]")) closeModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeModal();
+    });
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (file) importFile(file);
+    });
+
+    function syncClearButton() {
+      const show = Boolean(state.query);
+      clearBtn.classList.toggle("hidden", !show);
+      clearBtn.classList.toggle("grid", show);
+    }
+    searchEl.addEventListener("input", () => {
+      state.query = searchEl.value;
+      syncClearButton();
+      render();
+    });
+    clearBtn.addEventListener("click", () => {
+      state.query = "";
+      searchEl.value = "";
+      syncClearButton();
+      searchEl.focus();
+      render();
+    });
+    chipsEl.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-category]");
+      if (!button) return;
+      state.category = button.dataset.category;
+      render();
+    });
+    listEl.addEventListener("click", async (event) => {
+      const categoryBtn = event.target.closest("[data-category]");
+      if (categoryBtn) {
+        state.category = categoryBtn.dataset.category;
+        render();
+        return;
+      }
+      const button = event.target.closest("[data-copy]");
+      if (!button) return;
+      const licence = button.dataset.copy;
+      await copyText(licence);
+      const previous = button.innerHTML;
+      button.innerHTML = iconCheck();
+      button.setAttribute("aria-label", "Numéro de licence copié");
+      window.setTimeout(() => {
+        button.innerHTML = previous;
+        button.setAttribute("aria-label", "Copier le numéro de licence");
+      }, 1200);
+      showToast(`Licence ${licence} copiée`);
+    });
+
+    document.addEventListener("dragenter", (event) => {
+      if (!event.dataTransfer || ![...event.dataTransfer.types].includes("Files")) return;
+      event.preventDefault();
+      dragDepth += 1;
+      dropOverlay.classList.remove("hidden");
+      dropOverlay.classList.add("flex");
+    });
+    document.addEventListener("dragover", (event) => {
+      if (!event.dataTransfer || ![...event.dataTransfer.types].includes("Files")) return;
+      event.preventDefault();
+    });
+    document.addEventListener("dragleave", () => {
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) {
+        dropOverlay.classList.add("hidden");
+        dropOverlay.classList.remove("flex");
+      }
+    });
+    function hideDropOverlay() {
+      dragDepth = 0;
+      dropOverlay.classList.add("hidden");
+      dropOverlay.classList.remove("flex");
+    }
+    document.addEventListener("dragend", hideDropOverlay);
+    document.addEventListener("drop", (event) => {
+      if (!event.dataTransfer) return;
+      event.preventDefault();
+      hideDropOverlay();
+      if (!isUnlocked()) return;
+      const file = [...event.dataTransfer.files].find((item) => /\.xlsx?$/i.test(item.name));
+      if (!file) {
+        showToast("Déposez un fichier .xlsx");
+        return;
+      }
+      importFile(file);
+    });
+
+    boot();
+
+    const appEl = document.getElementById("app");
+    const lockscreenEl = document.getElementById("lockscreen");
+    const lockForm = document.getElementById("lockForm");
+    const passwordEl = document.getElementById("password");
+    const lockErrorEl = document.getElementById("lockError");
+    const sessionNoticeEl = document.getElementById("sessionNotice");
+    const togglePasswordBtn = document.getElementById("togglePassword");
+
+    function clearSession() {
+      try {
+        localStorage.removeItem(AUTH_KEY);
+        localStorage.removeItem(LOGIN_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function sessionState() {
+      try {
+        if (localStorage.getItem(AUTH_KEY) !== "1") return "locked";
+        const loginAt = Number(localStorage.getItem(LOGIN_KEY));
+        if (!Number.isFinite(loginAt)) return "locked";
+        if (Date.now() - loginAt > SESSION_MS) return "expired";
+        return "open";
+      } catch {
+        return "locked";
+      }
+    }
+
+    function isUnlocked() {
+      const state = sessionState();
+      if (state === "expired") {
+        clearSession();
+        document.documentElement.setAttribute("data-session-expired", "1");
+        return false;
+      }
+      return state === "open";
+    }
+
+    function applyLockState(unlocked, expired) {
+      document.documentElement.classList.toggle("unlocked", unlocked);
+      lockscreenEl.classList.toggle("hidden", unlocked);
+      if (unlocked) {
+        appEl.removeAttribute("inert");
+        appEl.removeAttribute("aria-hidden");
+        sessionNoticeEl.classList.add("hidden");
+        document.documentElement.removeAttribute("data-session-expired");
+      } else {
+        appEl.setAttribute("inert", "");
+        appEl.setAttribute("aria-hidden", "true");
+        passwordEl.value = "";
+        passwordEl.type = "password";
+        passwordEl.removeAttribute("aria-invalid");
+        lockErrorEl.classList.add("hidden");
+        sessionNoticeEl.classList.toggle("hidden", !expired);
+        togglePasswordBtn.setAttribute("aria-label", "Afficher le mot de passe");
+        window.setTimeout(() => passwordEl.focus(), 0);
+      }
+    }
+
+    function lockApp() {
+      clearSession();
+      closeModal();
+      document.documentElement.removeAttribute("data-session-expired");
+      applyLockState(false, false);
+    }
+
+    document.getElementById("lockBtn").addEventListener("click", lockApp);
+    lockForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const value = passwordEl.value.trim().toLowerCase();
+      if (value === ACCESS_PASSWORD) {
+        try {
+          localStorage.setItem(AUTH_KEY, "1");
+          localStorage.setItem(LOGIN_KEY, String(Date.now()));
+        } catch {
+          /* l'accès reste ouvert pour cette visite */
+        }
+        applyLockState(true);
+        return;
+      }
+      lockErrorEl.classList.remove("hidden");
+      passwordEl.setAttribute("aria-invalid", "true");
+      passwordEl.focus();
+      passwordEl.select();
+    });
+    passwordEl.addEventListener("input", () => {
+      lockErrorEl.classList.add("hidden");
+      passwordEl.removeAttribute("aria-invalid");
+    });
+    togglePasswordBtn.addEventListener("click", () => {
+      const show = passwordEl.type === "password";
+      passwordEl.type = show ? "text" : "password";
+      togglePasswordBtn.setAttribute("aria-label", show ? "Masquer le mot de passe" : "Afficher le mot de passe");
+      passwordEl.focus();
+    });
+
+    const unlocked = isUnlocked();
+    applyLockState(unlocked, document.documentElement.getAttribute("data-session-expired") === "1");
+  </script>
+</body>
+</html>
