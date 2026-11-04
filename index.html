@@ -174,8 +174,17 @@
     .ch-foot { position: absolute; right: 3mm; bottom: 0.4mm; font-size: 5.5pt; color: #333; }
     .ch-page.p2 .ch-red { top: 28mm; }
     @page { size: A4 landscape; margin: 5mm; }
+    #tourHole {
+      position: fixed;
+      z-index: 1;
+      border-radius: 16px;
+      pointer-events: none;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.75);
+    }
+    #tourTip { position: fixed; z-index: 2; width: min(22rem, calc(100vw - 1.5rem)); }
+    #tourRoot button:disabled { opacity: 0.4; }
     @media print {
-      #pitchModal { display: none !important; }
+      #pitchModal, #welcomeTour, #tourRoot { display: none !important; }
       body.printing-challenge #app,
       body.printing-challenge #lockscreen { display: none !important; }
       body.printing-challenge .challenge-sheet {
@@ -247,7 +256,7 @@
         </div>
       </div>
 
-      <div class="relative">
+      <div id="tourSearch" class="relative">
         <svg class="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="11" cy="11" r="7"></circle>
           <path d="M20 20l-3.5-3.5" stroke-linecap="round"></path>
@@ -288,6 +297,14 @@
             <circle cx="12" cy="12" r="2.2"></circle>
           </svg>
           Mode Compo
+        </button>
+        <button
+          id="tourBtn"
+          type="button"
+          class="inline-flex h-10 shrink-0 items-center gap-1 rounded-full bg-zinc-800 px-2.5 text-xs font-bold text-zinc-100 ring-1 ring-white/10 sm:px-3 sm:text-sm"
+        >
+          <span aria-hidden="true">❓</span>
+          Tutoriel
         </button>
         <div id="chips" class="no-scrollbar flex min-w-0 flex-1 gap-1.5 overflow-x-auto" role="tablist" aria-label="Catégories"></div>
       </div>
@@ -424,6 +441,31 @@
       </div>
       <div class="border-t border-white/10 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <button id="pitchDownload" type="button" class="h-11 w-full rounded-xl bg-[#DC2626] text-sm font-bold text-white">Télécharger l'image (PNG)</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="welcomeTour" class="fixed inset-0 z-[95] hidden items-center justify-center bg-black/75 px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+    <div class="w-full max-w-sm overflow-hidden rounded-3xl border-t-4 border-[#DC2626] bg-white p-6 text-zinc-950 shadow-2xl">
+      <h2 id="welcomeTitle" class="text-xl font-black leading-tight">Bienvenue sur l'application FJ CHAMPHOL ! ⚽</h2>
+      <p class="mt-3 text-sm leading-relaxed text-zinc-600">Voulez-vous suivre une visite guidée rapide pour découvrir toutes les fonctionnalités (Compo, Feuille de match, Ardoise tactique, WhatsApp) ?</p>
+      <div class="mt-5 flex flex-col gap-2">
+        <button id="welcomeStart" type="button" class="h-12 rounded-xl bg-[#DC2626] text-sm font-bold text-white">Démarrer le guide</button>
+        <button id="welcomeSkip" type="button" class="h-12 rounded-xl text-sm font-bold text-zinc-700 ring-1 ring-zinc-300">Plus tard / Passer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tourRoot" class="fixed inset-0 z-[100] hidden" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+    <div id="tourHole"></div>
+    <div id="tourTip" class="rounded-2xl bg-white p-4 text-zinc-950 shadow-2xl">
+      <p id="tourCount" class="text-[11px] font-bold uppercase tracking-wide text-[#DC2626]"></p>
+      <h2 id="tourTitle" class="mt-1 text-base font-black leading-tight"></h2>
+      <p id="tourBody" class="mt-2 text-sm leading-relaxed text-zinc-600"></p>
+      <div class="mt-4 flex gap-2">
+        <button id="tourPrev" type="button" class="h-10 flex-1 rounded-xl text-sm font-bold text-zinc-700 ring-1 ring-zinc-300">Précédent</button>
+        <button id="tourNext" type="button" class="h-10 flex-1 rounded-xl bg-[#DC2626] text-sm font-bold text-white">Suivant</button>
+        <button id="tourEnd" type="button" class="h-10 flex-1 rounded-xl text-sm font-bold text-zinc-700 ring-1 ring-zinc-300">Terminer</button>
       </div>
     </div>
   </div>
@@ -1223,10 +1265,17 @@
       if (event.target.closest("[data-close]")) closeModal();
     });
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        if (pitchState.open) closePitch();
-        else closeModal();
+      if (event.key !== "Escape") return;
+      if (!document.getElementById("tourRoot").classList.contains("hidden")) {
+        endTour();
+        return;
       }
+      if (!document.getElementById("welcomeTour").classList.contains("hidden")) {
+        closeWelcome();
+        return;
+      }
+      if (pitchState.open) closePitch();
+      else closeModal();
     });
     fileInput.addEventListener("change", () => {
       const file = fileInput.files && fileInput.files[0];
@@ -1781,6 +1830,7 @@
         appEl.removeAttribute("aria-hidden");
         sessionNoticeEl.classList.add("hidden");
         document.documentElement.removeAttribute("data-session-expired");
+        maybeWelcome();
       } else {
         appEl.setAttribute("inert", "");
         appEl.setAttribute("aria-hidden", "true");
@@ -1798,6 +1848,8 @@
       clearSession();
       closeModal();
       if (pitchState.open) closePitch();
+      closeWelcome();
+      if (!document.getElementById("tourRoot").classList.contains("hidden")) endTour();
       document.documentElement.removeAttribute("data-session-expired");
       applyLockState(false, false);
     }
@@ -1831,6 +1883,172 @@
       togglePasswordBtn.setAttribute("aria-label", show ? "Masquer le mot de passe" : "Afficher le mot de passe");
       passwordEl.focus();
     });
+
+    const TOUR_SEEN_KEY = "fj_tour_seen";
+    const welcomeTour = document.getElementById("welcomeTour");
+    const tourRoot = document.getElementById("tourRoot");
+    const tourHole = document.getElementById("tourHole");
+    const tourTip = document.getElementById("tourTip");
+    const tourCount = document.getElementById("tourCount");
+    const tourTitle = document.getElementById("tourTitle");
+    const tourBody = document.getElementById("tourBody");
+    const tourPrev = document.getElementById("tourPrev");
+    const tourNext = document.getElementById("tourNext");
+    let tourIndex = 0;
+    let tourReturnCompo = false;
+
+    const TOUR_STEPS = [
+      {
+        title: "Recherche et filtres",
+        body: "Cherchez un licencié par nom, prénom ou n° de licence, puis filtrez avec les pastilles de catégories, de U6 à U13 et au-delà.",
+        compo: false,
+        nodes: () => [document.getElementById("tourSearch"), document.getElementById("chips")],
+      },
+      {
+        title: "Liste des joueurs",
+        body: "Chaque carte affiche la licence en grand, le numéro personne, et les contacts du joueur comme du représentant légal. Le bouton rouge copie la licence.",
+        compo: false,
+        scroll: true,
+        nodes: () => [document.querySelector("#list .licence-card") || document.getElementById("list")],
+      },
+      {
+        title: "Mode Compo",
+        body: "Activez le Mode Compo pour cocher les joueurs convoqués. La sélection reste mémorisée sur cet appareil.",
+        compo: false,
+        nodes: () => [document.getElementById("compoToggle")],
+      },
+      {
+        title: "Export WhatsApp",
+        body: "Copiez la liste des convoqués, déjà mise en forme pour la coller dans un groupe WhatsApp.",
+        compo: true,
+        nodes: () => [document.getElementById("compoCopy")],
+      },
+      {
+        title: "Feuille de Challenge",
+        body: "Imprimez la feuille officielle du District d'Eure-et-Loir. L'équipe 1 est préremplie avec les joueurs cochés.",
+        compo: true,
+        nodes: () => [document.getElementById("compoPrint")],
+      },
+      {
+        title: "Ardoise tactique",
+        body: "Ouvrez le terrain interactif, choisissez le Foot à 5, à 8 ou à 11, placez les convoqués, puis téléchargez l'image.",
+        compo: true,
+        nodes: () => [document.getElementById("compoPitch")],
+      },
+    ];
+
+    function markTourSeen() {
+      try { localStorage.setItem(TOUR_SEEN_KEY, "true"); } catch { /* navigation privée */ }
+    }
+
+    function tourSeen() {
+      try { return localStorage.getItem(TOUR_SEEN_KEY) != null; } catch { return true; }
+    }
+
+    function closeWelcome() {
+      welcomeTour.classList.add("hidden");
+      welcomeTour.classList.remove("flex");
+    }
+
+    function maybeWelcome() {
+      if (!document.documentElement.classList.contains("unlocked")) return;
+      if (!tourRoot.classList.contains("hidden") || !welcomeTour.classList.contains("hidden")) return;
+      if (tourSeen()) return;
+      welcomeTour.classList.remove("hidden");
+      welcomeTour.classList.add("flex");
+    }
+
+    function tourRect() {
+      const rects = TOUR_STEPS[tourIndex].nodes().map((node) => node && node.getBoundingClientRect()).filter((rect) => rect && rect.width > 1 && rect.height > 1);
+      if (!rects.length) return { left: 16, top: 80, width: Math.min(280, window.innerWidth - 32), height: 48 };
+      const left = Math.min(...rects.map((rect) => rect.left));
+      const top = Math.min(...rects.map((rect) => rect.top));
+      const right = Math.max(...rects.map((rect) => rect.right));
+      const bottom = Math.max(...rects.map((rect) => rect.bottom));
+      return { left, top, width: right - left, height: bottom - top };
+    }
+
+    function placeTour() {
+      const pad = 6;
+      const rect = tourRect();
+      const left = Math.max(8, rect.left - pad);
+      const top = Math.max(8, rect.top - pad);
+      tourHole.style.left = `${left}px`;
+      tourHole.style.top = `${top}px`;
+      tourHole.style.width = `${Math.min(rect.width + pad * 2, window.innerWidth - left - 8)}px`;
+      tourHole.style.height = `${rect.height + pad * 2}px`;
+      const tipWidth = tourTip.offsetWidth;
+      const tipHeight = tourTip.offsetHeight;
+      let tipTop = top + rect.height + pad + 12;
+      if (tipTop + tipHeight > window.innerHeight - 8) tipTop = Math.max(8, top - tipHeight - 12);
+      let tipLeft = left;
+      if (tipLeft + tipWidth > window.innerWidth - 8) tipLeft = window.innerWidth - tipWidth - 8;
+      if (tipLeft < 8) tipLeft = 8;
+      tourTip.style.top = `${tipTop}px`;
+      tourTip.style.left = `${tipLeft}px`;
+    }
+
+    function showTourStep() {
+      const step = TOUR_STEPS[tourIndex];
+      if (step.compo !== state.compoMode) {
+        state.compoMode = step.compo;
+        render();
+      }
+      const focus = step.nodes().find(Boolean);
+      if (step.scroll && focus) focus.scrollIntoView({ block: "center", inline: "nearest" });
+      tourCount.textContent = `${tourIndex + 1} / ${TOUR_STEPS.length}`;
+      tourTitle.textContent = step.title;
+      tourBody.textContent = step.body;
+      tourPrev.disabled = tourIndex === 0;
+      tourNext.disabled = tourIndex === TOUR_STEPS.length - 1;
+      placeTour();
+    }
+
+    function startTour() {
+      closeWelcome();
+      if (pitchState.open) closePitch();
+      closeModal();
+      tourReturnCompo = state.compoMode;
+      tourIndex = 0;
+      tourRoot.classList.remove("hidden");
+      showTourStep();
+      tourNext.focus();
+    }
+
+    function endTour() {
+      tourRoot.classList.add("hidden");
+      if (state.compoMode !== tourReturnCompo) {
+        state.compoMode = tourReturnCompo;
+        render();
+      }
+    }
+
+    document.getElementById("welcomeStart").addEventListener("click", () => {
+      markTourSeen();
+      startTour();
+    });
+    document.getElementById("welcomeSkip").addEventListener("click", () => {
+      markTourSeen();
+      closeWelcome();
+    });
+    document.getElementById("tourBtn").addEventListener("click", startTour);
+    tourPrev.addEventListener("click", () => {
+      if (tourIndex === 0) return;
+      tourIndex -= 1;
+      showTourStep();
+    });
+    tourNext.addEventListener("click", () => {
+      if (tourIndex >= TOUR_STEPS.length - 1) return;
+      tourIndex += 1;
+      showTourStep();
+    });
+    document.getElementById("tourEnd").addEventListener("click", endTour);
+    window.addEventListener("resize", () => {
+      if (!tourRoot.classList.contains("hidden")) placeTour();
+    });
+    window.addEventListener("scroll", () => {
+      if (!tourRoot.classList.contains("hidden")) placeTour();
+    }, true);
 
     const unlocked = isUnlocked();
     applyLockState(unlocked, document.documentElement.getAttribute("data-session-expired") === "1");
