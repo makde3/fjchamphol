@@ -1,4 +1,4 @@
-const CACHE = "fj-champhol-v1";
+const CACHE = "fj-champhol-v2";
 const ASSETS = [
   "./",
   "./index.html",

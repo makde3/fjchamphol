@@ -68,7 +68,8 @@
     }
     .pitch-slot.is-active .pitch-token { outline: 3px solid #fff; outline-offset: 2px; }
     .pitch-who { margin-top: 1px; color: #fff; font: 800 9px/1.1 Arial, Helvetica, sans-serif; text-shadow: 0 1px 2px #000, 0 0 3px #000; word-break: break-word; }
-    .challenge-sheet { display: none; color-scheme: light; }
+    #print-page-1,
+    #print-page-2 { display: none; color-scheme: light; }
     .ch-page {
       box-sizing: border-box;
       display: block;
@@ -85,8 +86,8 @@
       page: page_portrait;
       break-after: page;
       page-break-after: always;
-      width: 190mm;
-      height: 277mm;
+      width: 100%;
+      height: auto;
       padding: 2mm 2.5mm 2mm;
     }
     .ch-page.p2 {
@@ -95,9 +96,9 @@
       page-break-before: always;
       break-after: auto;
       page-break-after: auto;
-      width: 281mm;
-      height: 194mm;
-      padding: 1.5mm 2mm 4.5mm;
+      width: 100%;
+      height: auto;
+      padding: 1.2mm 1.5mm 3mm;
     }
     .ch-page * { box-sizing: border-box; }
     .ch-page input {
@@ -176,7 +177,7 @@
     .ch-eval { display: grid; grid-template-columns: 1.7fr 0.7fr; gap: 1.5mm; align-content: end; }
     .ch-eval table td { text-align: left; font-size: 6pt; font-weight: 600; padding: 0 1mm; height: 6mm; }
     .ch-note { font-size: 6.5pt; text-align: center; font-weight: 700; }
-    .ch-quad { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; width: 100%; height: 172mm; }
+    .ch-quad { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); width: 100%; height: 166mm; }
     .ch-page.p1 .ch-info {
       grid-template-columns: 1fr 1fr;
       grid-template-areas: "meta meta" "when rules";
@@ -213,7 +214,8 @@
     .ch-resp .ch-field { height: 5mm; }
     .ch-foot { position: absolute; right: 3mm; bottom: 0.4mm; font-size: 5.5pt; color: #333; }
     .ch-page.p2 .ch-red { top: 28mm; }
-    @page page_portrait { size: A4 portrait; margin: 10mm; }
+    .ch-page.p2 .ch-team { min-height: 0; overflow: hidden; }
+    @page page_portrait { size: A4 portrait; margin: 8mm; }
     @page page_paysage { size: A4 landscape; margin: 8mm; }
     #tourHole {
       position: fixed;
@@ -225,16 +227,42 @@
     #tourTip { position: fixed; z-index: 2; width: min(22rem, calc(100vw - 1.5rem)); }
     #tourRoot button:disabled { opacity: 0.4; }
     @media print {
-      #pitchModal, #welcomeTour, #tourRoot { display: none !important; }
-      body.printing-challenge #app,
-      body.printing-challenge #lockscreen { display: none !important; }
-      body.printing-challenge {
+      @page page_portrait { size: A4 portrait; margin: 8mm; }
+      @page page_paysage { size: A4 landscape; margin: 8mm; }
+      html, body {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
         background: #fff !important;
       }
-      body.printing-challenge #challengeSheet {
-        display: contents !important;
+      body > *:not(#print-page-1):not(#print-page-2) { display: none !important; }
+      #print-page-1 {
+        display: block !important;
+        page: page_portrait;
+        break-after: page;
+        page-break-after: always;
+        width: 100%;
+        height: auto;
+      }
+      #print-page-2 {
+        display: block !important;
+        page: page_paysage;
+        break-before: page;
+        page-break-before: always;
+        break-after: auto;
+        page-break-after: auto;
+        width: 100% !important;
         height: auto !important;
-        overflow: visible !important;
+      }
+      #print-page-2 .ch-quad {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+        width: 100%;
+        height: 166mm;
       }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -425,7 +453,8 @@
   </div>
   </div>
 
-  <div id="challengeSheet" class="challenge-sheet" aria-hidden="true"></div>
+  <div id="print-page-1" class="ch-page p1" aria-hidden="true"></div>
+  <div id="print-page-2" class="ch-page p2" aria-hidden="true"></div>
 
   <div id="pitchModal" class="fixed inset-0 z-[75] hidden items-stretch justify-center bg-black/75 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="pitchTitle">
     <div class="flex h-full w-full flex-col bg-zinc-950 text-white sm:h-auto sm:max-h-[94vh] sm:max-w-[460px] sm:overflow-hidden sm:rounded-3xl sm:ring-1 sm:ring-white/10">
@@ -1433,11 +1462,12 @@
     }
 
     function buildChallengeSheet() {
-      const sheet = document.getElementById("challengeSheet");
+      const page1 = document.getElementById("print-page-1");
+      const page2 = document.getElementById("print-page-2");
       const resultRows = challengeRows(6, `<td></td><td class="ch-score"></td><td></td><td><input type="checkbox" class="ch-box" aria-label="Défi match"></td><td></td>`);
       const jongleRows = challengeRows(4, `<td></td><td></td>`);
       const arbitreRows = challengeRows(4, `<td></td><td></td>`);
-      sheet.innerHTML = `<section class="ch-page p1">
+      page1.innerHTML = `
         <img class="ch-fff" src="challenge-fff.png?v=2" alt="FFF">
         <img class="ch-blue" src="challenge-blue.png?v=2" alt="">
         <h1>FEUILLE DE CHALLENGE 1/2</h1>
@@ -1505,21 +1535,18 @@
               <table class="ch-table"><tbody><tr><td></td></tr><tr><td></td></tr><tr><td></td></tr></tbody></table>
             </div>
           </div>
-        </div>
-      </section>
-      <section class="ch-page p2">
-        <img class="ch-blue" src="challenge-blue.png?v=2" alt="">
+        </div>`;
+      page2.innerHTML = `<img class="ch-blue" src="challenge-blue.png?v=2" alt="">
         <img class="ch-red" src="challenge-red.png?v=2" alt="">
         <h1>FEUILLE DE CHALLENGE 2/2</h1>
         <div class="ch-quad">${[1, 2, 3, 4].map(challengeTeam).join("")}</div>
-        <p class="ch-foot">(Mettre le chiffre 1 dans la colonne « Blessure » - Préciser ensuite sa blessure).</p>
-      </section>`;
+        <p class="ch-foot">(Mettre le chiffre 1 dans la colonne « Blessure » - Préciser ensuite sa blessure).</p>`;
     }
 
     function fillChallengeSheet() {
       const picked = convokedPlayers();
       const team = picked.slice(0, 12);
-      document.querySelectorAll('#challengeSheet [data-team="1"]').forEach((input) => {
+      document.querySelectorAll('#print-page-2 [data-team="1"]').forEach((input) => {
         const player = team[Number(input.dataset.row)];
         if (!player || input.dataset.field === "blessure") {
           input.value = "";
@@ -1529,7 +1556,7 @@
         else if (input.dataset.field === "prenom") input.value = player.prenom;
         else if (input.dataset.field === "lic") input.value = player.licence;
       });
-      const title = document.querySelector('#challengeSheet [data-team-title="1"]');
+      const title = document.querySelector('#print-page-2 [data-team-title="1"]');
       const categories = [...new Set(team.map((player) => player.categorieCourte).filter(Boolean))];
       if (title) title.value = team.length ? (categories.length === 1 ? `FJ CHAMPHOL ${categories[0]}` : "FJ CHAMPHOL") : "";
       return picked.length;
