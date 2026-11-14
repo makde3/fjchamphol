@@ -3,15 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#09090B" />
+  <meta name="theme-color" content="#1e3a8a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="FJC Licences" />
+  <meta name="apple-mobile-web-app-title" content="FJ Champhol" />
   <meta name="description" content="Licences FFF du Football Jeunesse Champhol — recherche terrain le jour de match." />
   <title>FJ Champhol — Licences</title>
-  <link rel="icon" href="logo fjchamphol.jpg" />
-  <link rel="apple-touch-icon" href="logo fjchamphol.jpg" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -70,18 +71,34 @@
     .challenge-sheet { display: none; color-scheme: light; }
     .ch-page {
       box-sizing: border-box;
-      width: 287mm;
-      height: 200mm;
-      padding: 2mm 3mm 1.5mm;
+      display: block;
       position: relative;
-      overflow: hidden;
+      overflow: visible;
+      margin: 0;
       background: #fff;
       color: #111;
       font-family: Arial, Helvetica, sans-serif;
-      page-break-after: always;
-      break-after: page;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
-    .ch-page:last-child { page-break-after: auto; break-after: auto; }
+    .ch-page.p1 {
+      page: page_portrait;
+      break-after: page;
+      page-break-after: always;
+      width: 190mm;
+      height: 277mm;
+      padding: 2mm 2.5mm 2mm;
+    }
+    .ch-page.p2 {
+      page: page_paysage;
+      break-before: page;
+      page-break-before: always;
+      break-after: auto;
+      page-break-after: auto;
+      width: 281mm;
+      height: 194mm;
+      padding: 1.5mm 2mm 4.5mm;
+    }
     .ch-page * { box-sizing: border-box; }
     .ch-page input {
       width: 100%;
@@ -159,7 +176,30 @@
     .ch-eval { display: grid; grid-template-columns: 1.7fr 0.7fr; gap: 1.5mm; align-content: end; }
     .ch-eval table td { text-align: left; font-size: 6pt; font-weight: 600; padding: 0 1mm; height: 6mm; }
     .ch-note { font-size: 6.5pt; text-align: center; font-weight: 700; }
-    .ch-quad { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 184mm; }
+    .ch-quad { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; width: 100%; height: 172mm; }
+    .ch-page.p1 .ch-info {
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas: "meta meta" "when rules";
+      min-height: 0;
+    }
+    .ch-page.p1 .ch-meta { grid-area: meta; }
+    .ch-page.p1 .ch-when { grid-area: when; }
+    .ch-page.p1 .ch-rules { grid-area: rules; min-height: 28mm; }
+    .ch-page.p1 .ch-mid { grid-template-columns: 1fr; height: auto; }
+    .ch-page.p1 .ch-remarks { min-height: 28mm; }
+    .ch-page.p1 .ch-bot { grid-template-columns: 1fr 1fr; height: auto; }
+    .ch-page.p1 .ch-eval { grid-column: 1 / -1; }
+    .ch-page.p1 .ch-table th,
+    .ch-page.p1 .ch-table td { height: 6.8mm; }
+    .ch-page.p2 h1 { margin-bottom: 1mm; }
+    .ch-page.p2 .ch-team { height: 100%; }
+    .ch-page.p2 .ch-team table { flex: 1; }
+    .ch-page.p2 .ch-team th,
+    .ch-page.p2 .ch-team td { height: 5.1mm; font-size: 7.5pt; }
+    .ch-page.p2 .ch-team td.num,
+    .ch-page.p2 .ch-team th.num { width: 8mm; }
+    .ch-page.p2 .ch-team td.hurt,
+    .ch-page.p2 .ch-team th.hurt { width: 20mm; }
     .ch-team { min-width: 0; padding: 1mm 1.5mm 0; display: flex; flex-direction: column; }
     .ch-team:nth-child(1), .ch-team:nth-child(2) { border-bottom: 1.2px solid #1a4f9c; }
     .ch-team:nth-child(1), .ch-team:nth-child(3) { border-right: 1.2px solid #1a4f9c; }
@@ -173,7 +213,8 @@
     .ch-resp .ch-field { height: 5mm; }
     .ch-foot { position: absolute; right: 3mm; bottom: 0.4mm; font-size: 5.5pt; color: #333; }
     .ch-page.p2 .ch-red { top: 28mm; }
-    @page { size: A4 landscape; margin: 5mm; }
+    @page page_portrait { size: A4 portrait; margin: 10mm; }
+    @page page_paysage { size: A4 landscape; margin: 8mm; }
     #tourHole {
       position: fixed;
       z-index: 1;
@@ -187,10 +228,13 @@
       #pitchModal, #welcomeTour, #tourRoot { display: none !important; }
       body.printing-challenge #app,
       body.printing-challenge #lockscreen { display: none !important; }
-      body.printing-challenge .challenge-sheet {
-        display: block !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+      body.printing-challenge {
+        background: #fff !important;
+      }
+      body.printing-challenge #challengeSheet {
+        display: contents !important;
+        height: auto !important;
+        overflow: visible !important;
       }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -234,6 +278,13 @@
           <p class="mt-0.5 text-[10px] font-semibold leading-tight tracking-[0.08em] text-[#DC2626] sm:text-[11px]">FOYER DES JEUNES DE CHAMPHOL</p>
         </div>
         <div class="flex shrink-0 items-center gap-1.5">
+          <button
+            id="installBtn"
+            type="button"
+            class="hidden h-10 shrink-0 rounded-xl px-2 text-[10px] font-semibold leading-tight text-zinc-400 ring-1 ring-white/15 hover:bg-white/10 hover:text-white"
+          >
+            Installer<br />l'appli
+          </button>
           <button
             id="lockBtn"
             type="button"
@@ -1386,7 +1437,7 @@
       const resultRows = challengeRows(6, `<td></td><td class="ch-score"></td><td></td><td><input type="checkbox" class="ch-box" aria-label="Défi match"></td><td></td>`);
       const jongleRows = challengeRows(4, `<td></td><td></td>`);
       const arbitreRows = challengeRows(4, `<td></td><td></td>`);
-      sheet.innerHTML = `<section class="ch-page">
+      sheet.innerHTML = `<section class="ch-page p1">
         <img class="ch-fff" src="challenge-fff.png?v=2" alt="FFF">
         <img class="ch-blue" src="challenge-blue.png?v=2" alt="">
         <h1>FEUILLE DE CHALLENGE 1/2</h1>
@@ -2049,6 +2100,28 @@
     window.addEventListener("scroll", () => {
       if (!tourRoot.classList.contains("hidden")) placeTour();
     }, true);
+
+    const installBtn = document.getElementById("installBtn");
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      installBtn._prompt = event;
+      installBtn.classList.remove("hidden");
+    });
+    installBtn.addEventListener("click", async () => {
+      const promptEvent = installBtn._prompt;
+      if (!promptEvent) return;
+      promptEvent.prompt();
+      await promptEvent.userChoice;
+      installBtn._prompt = null;
+      installBtn.classList.add("hidden");
+    });
+    window.addEventListener("appinstalled", () => {
+      installBtn._prompt = null;
+      installBtn.classList.add("hidden");
+    });
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    }
 
     const unlocked = isUnlocked();
     applyLockState(unlocked, document.documentElement.getAttribute("data-session-expired") === "1");
